@@ -2,6 +2,14 @@ import { FormEvent, useEffect, useState } from 'react';
 import { WorkshopStatus } from '@b2b-ops/shared';
 import { api, Workshop } from '../../lib/api';
 
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  [WorkshopStatus.SCHEDULED]: 'badge badge-muted',
+  [WorkshopStatus.CONFIRMED]: 'badge',
+  [WorkshopStatus.COMPLETED]: 'badge badge-success',
+  [WorkshopStatus.CANCELLED]: 'badge badge-danger',
+  [WorkshopStatus.RESCHEDULED]: 'badge badge-warning',
+};
+
 export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [form, setForm] = useState({ topic: '', targetGrades: '', scheduledAt: '' });
@@ -41,7 +49,7 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
           <div key={w.id} className="card">
             <div className="workshop-header">
               <strong>{w.topic}</strong>
-              <span className="badge">{w.status}</span>
+              <span className={STATUS_BADGE_CLASS[w.status]}>{w.status}</span>
             </div>
             <p className="muted">
               {new Date(w.scheduledAt).toLocaleString()} {w.targetGrades ? `· Grades ${w.targetGrades}` : ''}

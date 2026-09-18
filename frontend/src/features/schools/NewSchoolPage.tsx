@@ -54,7 +54,12 @@ export function NewSchoolPage() {
   return (
     <div className="page">
       <h1>New School — Sales Handover</h1>
+      <p className="muted" style={{ marginTop: 0, marginBottom: 20 }}>
+        Capture what the SOP requires before any onboarding activity begins — the rest of the checklist unlocks
+        once this is saved.
+      </p>
       <form className="form-grid" onSubmit={onSubmit}>
+        <div className="form-section-title">School</div>
         <label>
           School name
           <input value={form.name} onChange={(e) => set('name', e.target.value)} required />
@@ -67,22 +72,26 @@ export function NewSchoolPage() {
           State
           <input value={form.state} onChange={(e) => set('state', e.target.value)} />
         </label>
+
+        <div className="form-section-title">Owner / Decision-maker</div>
         <label>
-          Owner / decision-maker name
+          Name
           <input value={form.ownerName} onChange={(e) => set('ownerName', e.target.value)} />
         </label>
         <label>
-          Owner designation
+          Designation
           <input value={form.ownerDesignation} onChange={(e) => set('ownerDesignation', e.target.value)} />
         </label>
         <label>
-          Owner email
+          Email
           <input type="email" value={form.ownerEmail} onChange={(e) => set('ownerEmail', e.target.value)} />
         </label>
         <label>
-          Owner phone
+          Phone
           <input value={form.ownerPhone} onChange={(e) => set('ownerPhone', e.target.value)} />
         </label>
+
+        <div className="form-section-title">Program &amp; commitments</div>
         <label>
           Product / program
           <input value={form.productProgram} onChange={(e) => set('productProgram', e.target.value)} />

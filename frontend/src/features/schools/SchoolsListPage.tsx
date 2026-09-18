@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { SchoolStatus } from '@b2b-ops/shared';
 import { api, School, staffToken } from '../../lib/api';
+import { PhaseProgress } from '../../components/PhaseProgress';
+
+const STATUS_BADGE_CLASS: Record<SchoolStatus, string> = {
+  ACTIVE: 'badge badge-success',
+  RENEWED: 'badge',
+  CHURNED: 'badge badge-danger',
+};
 
 export function SchoolsListPage() {
   const [schools, setSchools] = useState<School[]>([]);
@@ -21,7 +29,7 @@ export function SchoolsListPage() {
           <tr>
             <th>Name</th>
             <th>City</th>
-            <th>Phase</th>
+            <th>Progress</th>
             <th>Status</th>
             <th>Account Manager</th>
           </tr>
@@ -33,8 +41,12 @@ export function SchoolsListPage() {
                 <Link to={`/schools/${s.id}`}>{s.name}</Link>
               </td>
               <td>{s.city ?? '—'}</td>
-              <td>{s.currentPhase.replace(/_/g, ' ')}</td>
-              <td>{s.status}</td>
+              <td>
+                <PhaseProgress phase={s.currentPhase} compact />
+              </td>
+              <td>
+                <span className={STATUS_BADGE_CLASS[s.status]}>{s.status}</span>
+              </td>
               <td>{s.assignedAccountManager?.name ?? '—'}</td>
             </tr>
           ))}

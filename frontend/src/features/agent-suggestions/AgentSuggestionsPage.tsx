@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { SuggestionStatus } from '@b2b-ops/shared';
 import { AgentSuggestion, api, staffToken, staffUser } from '../../lib/api';
 
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  [SuggestionStatus.PENDING]: 'badge badge-warning',
+  [SuggestionStatus.SENT]: 'badge badge-success',
+  [SuggestionStatus.REJECTED]: 'badge badge-danger',
+  [SuggestionStatus.APPROVED]: 'badge',
+};
+
 export function AgentSuggestionsPage() {
   const token = staffToken.get()!;
   const isSuperAdmin = staffUser.get()?.role === 'SUPER_ADMIN';
@@ -143,7 +150,9 @@ export function AgentSuggestionsPage() {
               </td>
               <td>{s.agentKey}</td>
               <td>{s.suggestionType.replace(/_/g, ' ')}</td>
-              <td>{s.status}</td>
+              <td>
+                <span className={STATUS_BADGE_CLASS[s.status]}>{s.status}</span>
+              </td>
             </tr>
           ))}
         </tbody>

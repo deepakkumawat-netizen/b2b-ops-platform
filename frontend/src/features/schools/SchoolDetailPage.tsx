@@ -8,6 +8,7 @@ import { SchoolWorkshopsTab } from './SchoolWorkshopsTab';
 import { SchoolEngagementTab } from './SchoolEngagementTab';
 import { SchoolCompetitionsTab } from './SchoolCompetitionsTab';
 import { SchoolRenewalsTab } from './SchoolRenewalsTab';
+import { PhaseProgress } from '../../components/PhaseProgress';
 
 const TABS = ['Checklist', 'Teachers', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal'] as const;
 type Tab = (typeof TABS)[number];
@@ -53,7 +54,7 @@ export function SchoolDetailPage() {
           </p>
         </div>
         <div className="school-header-phase">
-          <span className="badge">{school.currentPhase.replace(/_/g, ' ')}</span>
+          <PhaseProgress phase={school.currentPhase} />
           {school.currentPhase !== 'ANNUAL_RENEWAL' && (
             <button onClick={advancePhase}>Advance to Next Phase</button>
           )}

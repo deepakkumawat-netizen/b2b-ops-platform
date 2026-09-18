@@ -1,25 +1,33 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { SchoolLifecyclePhase } from '@b2b-ops/shared';
 import { api, Dashboard, staffToken } from '../../lib/api';
+import { PHASE_LABELS, PHASE_ORDER } from '../../lib/phases';
 
-// Plain string keys (not computed from the enum) — same values, but this
-// keeps SchoolLifecyclePhase a type-only import that's fully erased at
-// build time, matching how every other page in this app only ever uses
-// these shared enums as runtime values via direct member access (e.g.
-// WorkshopStatus.SCHEDULED), never as computed object keys.
-const PHASE_LABELS: Record<SchoolLifecyclePhase, string> = {
-  SALES_HANDOVER: 'Sales Handover',
-  WELCOME: 'Welcome',
-  ORIENTATION: 'Orientation',
-  ONBOARDING_SETUP: 'Onboarding Setup',
-  DATA_COLLECTION_LMS: 'Data Collection & LMS',
-  INFRA_DIAGNOSTIC: 'Infra Diagnostic',
-  TEACHER_TRAINING: 'Teacher Training',
-  ONGOING_ENGAGEMENT: 'Ongoing Engagement',
-  COMPETITIONS: 'Competitions',
-  ANNUAL_RENEWAL: 'Annual Renewal',
+type AttentionItem = {
+  schoolId: string;
+  name: string;
+  visitOverdue: boolean;
+  lastVisitDate: string | null;
+  callOverdue: boolean;
+  lastCallDate: string | null;
 };
+
+function mergeAttentionItems(data: Dashboard): AttentionItem[] {
+  const bySchool = new Map<string, AttentionItem>();
+  for (const v of data.overdueVisits) {
+    bySchool.set(v.schoolId, { schoolId: v.schoolId, name: v.name, visitOverdue: true, lastVisitDate: v.lastVisitDate, callOverdue: false, lastCallDate: null });
+  }
+  for (const c of data.overdueCalls) {
+    const existing = bySchool.get(c.schoolId);
+    if (existing) {
+      existing.callOverdue = true;
+      existing.lastCallDate = c.lastCallDate;
+    } else {
+      bySchool.set(c.schoolId, { schoolId: c.schoolId, name: c.name, visitOverdue: false, lastVisitDate: null, callOverdue: true, lastCallDate: c.lastCallDate });
+    }
+  }
+  return Array.from(bySchool.values());
+}
 
 export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
@@ -32,7 +40,10 @@ export function DashboardPage() {
   }, [token]);
 
   if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p className="muted">Loading…</p>;
+
+  const attention = mergeAttentionItems(data);
+  const maxPhaseCount = Math.max(1, ...Object.values(data.schoolsByPhase));
 
   return (
     <div className="page">
@@ -43,12 +54,8 @@ export function DashboardPage() {
           <span className="stat-label">Schools</span>
         </div>
         <div className="stat-tile">
-          <span className="stat-value">{data.overdueVisits.length}</span>
-          <span className="stat-label">Overdue Visits</span>
-        </div>
-        <div className="stat-tile">
-          <span className="stat-value">{data.overdueCalls.length}</span>
-          <span className="stat-label">Overdue Calls</span>
+          <span className="stat-value">{attention.length}</span>
+          <span className="stat-label">Need Follow-up</span>
         </div>
         <div className="stat-tile">
           <span className="stat-value">{data.pendingRenewals.length}</span>
@@ -60,52 +67,53 @@ export function DashboardPage() {
         </Link>
       </div>
 
+      <div className="section-title">Needs Attention</div>
+      <section className={`card attention-card${attention.length === 0 ? ' is-empty' : ''}`}>
+        {attention.length === 0 && <p className="muted" style={{ margin: 0 }}>Nothing overdue — every school is on its engagement cadence.</p>}
+        {attention.map((item) => (
+          <div key={item.schoolId} className="attention-row">
+            <div>
+              <Link to={`/schools/${item.schoolId}`}>{item.name}</Link>
+              <div className="attention-row-meta">
+                {item.visitOverdue && (item.lastVisitDate ? `Last visit ${new Date(item.lastVisitDate).toLocaleDateString()}` : 'Never visited')}
+                {item.visitOverdue && item.callOverdue && ' · '}
+                {item.callOverdue && (item.lastCallDate ? `Last call ${new Date(item.lastCallDate).toLocaleDateString()}` : 'Never called')}
+              </div>
+            </div>
+            <div>
+              {item.visitOverdue && <span className="badge badge-warning">Visit overdue</span>}{' '}
+              {item.callOverdue && <span className="badge badge-warning">Call overdue</span>}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="section-title">Schools by Phase</div>
       <section className="card">
-        <h2>Schools by Phase</h2>
         <ul className="phase-breakdown">
-          {Object.entries(PHASE_LABELS).map(([phase, label]) => (
-            <li key={phase}>
-              <span>{label}</span>
-              <strong>{data.schoolsByPhase[phase] ?? 0}</strong>
-            </li>
-          ))}
+          {PHASE_ORDER.map((phase) => {
+            const count = data.schoolsByPhase[phase] ?? 0;
+            return (
+              <li key={phase}>
+                <span>{PHASE_LABELS[phase]}</span>
+                <div className="phase-breakdown-bar">
+                  <div className="phase-breakdown-bar-fill" style={{ width: `${(count / maxPhaseCount) * 100}%` }} />
+                </div>
+                <strong>{count}</strong>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
       <div className="card-grid">
-        <section className="card">
-          <h2>Overdue Visits (35+ days)</h2>
-          {data.overdueVisits.length === 0 && <p className="muted">None — everyone's up to date.</p>}
-          <ul>
-            {data.overdueVisits.map((v) => (
-              <li key={v.schoolId}>
-                <Link to={`/schools/${v.schoolId}`}>{v.name}</Link>
-                {v.lastVisitDate ? ` — last visit ${new Date(v.lastVisitDate).toLocaleDateString()}` : ' — never visited'}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="card">
-          <h2>Overdue Calls (10+ days)</h2>
-          {data.overdueCalls.length === 0 && <p className="muted">None — everyone's up to date.</p>}
-          <ul>
-            {data.overdueCalls.map((c) => (
-              <li key={c.schoolId}>
-                <Link to={`/schools/${c.schoolId}`}>{c.name}</Link>
-                {c.lastCallDate ? ` — last call ${new Date(c.lastCallDate).toLocaleDateString()}` : ' — never called'}
-              </li>
-            ))}
-          </ul>
-        </section>
-
         <section className="card">
           <h2>Upcoming Workshops (7 days)</h2>
           {data.upcomingWorkshops.length === 0 && <p className="muted">Nothing scheduled.</p>}
           <ul>
             {data.upcomingWorkshops.map((w) => (
               <li key={w.id}>
-                {w.school.name} — {w.topic} ({new Date(w.scheduledAt).toLocaleString()})
+                <Link to={`/schools/${w.schoolId}`}>{w.school.name}</Link> — {w.topic} ({new Date(w.scheduledAt).toLocaleString()})
               </li>
             ))}
           </ul>
@@ -117,8 +125,8 @@ export function DashboardPage() {
           <ul>
             {data.pendingRenewals.map((r) => (
               <li key={r.id}>
-                <Link to={`/schools/${r.schoolId}`}>{r.school.name}</Link> —{' '}
-                {r.cycleLabel} ({r.renewalStatus})
+                <Link to={`/schools/${r.schoolId}`}>{r.school.name}</Link> — {r.cycleLabel}{' '}
+                <span className="badge badge-muted">{r.renewalStatus}</span>
               </li>
             ))}
           </ul>

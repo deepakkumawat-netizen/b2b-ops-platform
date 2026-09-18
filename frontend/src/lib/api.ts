@@ -129,6 +129,7 @@ export type InfraDiagnostic = {
 
 export type Workshop = {
   id: string;
+  schoolId: string;
   topic: string;
   targetGrades: string | null;
   scheduledAt: string;
