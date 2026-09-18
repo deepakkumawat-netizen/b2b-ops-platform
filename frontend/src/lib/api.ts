@@ -311,5 +311,9 @@ export const api = {
     request<AgentSuggestion>(`/agent-suggestions/${id}/approve`, { method: 'POST', token }),
   rejectAgentSuggestion: (id: string, token: string) =>
     request<AgentSuggestion>(`/agent-suggestions/${id}/reject`, { method: 'POST', token }),
-  runAgentsNow: (token: string) => request<{ engagement: number; renewal: number }>('/agent-suggestions/run', { method: 'POST', token }),
+  runAgentsNow: (token: string) =>
+    request<{ engagement: number; renewal: number; workshopReminder: number; renewalCycleOpener: number }>(
+      '/agent-suggestions/run',
+      { method: 'POST', token },
+    ),
 };

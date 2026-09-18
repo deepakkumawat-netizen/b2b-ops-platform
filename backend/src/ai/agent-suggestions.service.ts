@@ -49,6 +49,34 @@ export class AgentSuggestionsService {
     });
   }
 
+  /** Called by fully-autonomous agents (WorkshopReminderAgentService,
+   * RenewalCycleOpenerAgentService) AFTER they've already taken the real
+   * action (sent the reminder, opened the cycle) — this row is a pure audit
+   * entry, never something a human approves. reviewedByStaffId stays null
+   * (no human reviewed it) while reviewedAt is set to when it happened, so
+   * the two are distinguishable from a human-approved SENT suggestion. */
+  async logAutoAction(params: {
+    schoolId: string;
+    agentKey: AgentKey;
+    suggestionType: SuggestionType;
+    subject: string;
+    body: string;
+    reasoning: string;
+  }) {
+    return this.prisma.agentSuggestion.create({
+      data: {
+        schoolId: params.schoolId,
+        agentKey: params.agentKey,
+        suggestionType: params.suggestionType,
+        draftSubject: params.subject,
+        draftBody: params.body,
+        reasoning: params.reasoning,
+        status: SuggestionStatus.AUTO_SENT,
+        reviewedAt: new Date(),
+      },
+    });
+  }
+
   async update(id: string, dto: UpdateAgentSuggestionDto, staff: StaffJwtPayload) {
     const suggestion = await this.findScoped(id, staff);
     return this.prisma.agentSuggestion.update({ where: { id: suggestion.id }, data: dto });

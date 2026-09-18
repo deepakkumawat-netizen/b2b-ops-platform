@@ -10,6 +10,15 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   [SuggestionStatus.SENT]: 'badge badge-success',
   [SuggestionStatus.REJECTED]: 'badge badge-danger',
   [SuggestionStatus.APPROVED]: 'badge',
+  [SuggestionStatus.AUTO_SENT]: 'badge badge-info',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  [SuggestionStatus.PENDING]: 'Pending',
+  [SuggestionStatus.SENT]: 'Sent',
+  [SuggestionStatus.REJECTED]: 'Rejected',
+  [SuggestionStatus.APPROVED]: 'Approved',
+  [SuggestionStatus.AUTO_SENT]: 'Auto-sent',
 };
 
 export function AgentSuggestionsPage() {
@@ -70,7 +79,10 @@ export function AgentSuggestionsPage() {
     setRunResult(null);
     try {
       const result = await api.runAgentsNow(token);
-      setRunResult(`Created ${result.engagement} engagement + ${result.renewal} renewal suggestion(s).`);
+      setRunResult(
+        `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
+          `Auto-sent ${result.workshopReminder} workshop reminder(s) and opened ${result.renewalCycleOpener} renewal cycle(s) automatically.`,
+      );
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not run agents');
@@ -92,6 +104,11 @@ export function AgentSuggestionsPage() {
           </button>
         )}
       </div>
+      <p className="page-intro">
+        Follow-up nudges and renewal pitches land below for you to edit and approve before anything sends. Workshop
+        day-before reminders and opening a renewal cycle happen automatically — you'll see those in Activity marked{' '}
+        <span className="badge badge-info">Auto-sent</span>.
+      </p>
       {runResult && <p className="success">{runResult}</p>}
       {error && <p className="error">{error}</p>}
 
@@ -139,8 +156,11 @@ export function AgentSuggestionsPage() {
         })}
       </div>
 
-      <h2>Reviewed</h2>
-      {decided.length === 0 && <p className="muted">Nothing reviewed yet.</p>}
+      <h2>Activity</h2>
+      <p className="muted small" style={{ marginTop: -4 }}>
+        Everything the agents have drafted, sent, or done automatically.
+      </p>
+      {decided.length === 0 && <p className="muted">Nothing yet.</p>}
       <table className="data-table">
         <thead>
           <tr>
@@ -159,7 +179,7 @@ export function AgentSuggestionsPage() {
               <td>{s.agentKey}</td>
               <td>{s.suggestionType.replace(/_/g, ' ')}</td>
               <td>
-                <span className={STATUS_BADGE_CLASS[s.status]}>{s.status}</span>
+                <span className={STATUS_BADGE_CLASS[s.status]}>{STATUS_LABEL[s.status]}</span>
               </td>
             </tr>
           ))}

@@ -7,5 +7,6 @@ import { WorkshopsController } from './workshops.controller';
   imports: [NotificationsModule],
   controllers: [WorkshopsController],
   providers: [WorkshopsService],
+  exports: [WorkshopsService],
 })
 export class WorkshopsModule {}

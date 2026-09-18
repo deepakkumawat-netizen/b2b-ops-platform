@@ -609,6 +609,10 @@ a:hover {
   background: var(--surface-sunken);
   color: var(--muted);
 }
+.badge-info {
+  background: var(--info-soft);
+  color: var(--info);
+}
 
 /* ── Phase progress bar (shared component) ───────────────────────────── */
 

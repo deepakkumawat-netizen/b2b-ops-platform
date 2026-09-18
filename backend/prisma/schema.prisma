@@ -297,11 +297,15 @@ model EmailLog {
 enum AgentKey {
   ENGAGEMENT
   RENEWAL
+  WORKSHOP_REMINDER
+  RENEWAL_CYCLE_OPENER
 }
 
 enum SuggestionType {
   FOLLOWUP_EMAIL
   RENEWAL_PITCH
+  WORKSHOP_REMINDER_SENT
+  RENEWAL_CYCLE_OPENED
 }
 
 enum SuggestionStatus {
@@ -309,6 +313,7 @@ enum SuggestionStatus {
   APPROVED
   REJECTED
   SENT
+  AUTO_SENT
 }
 
 model AgentSuggestion {

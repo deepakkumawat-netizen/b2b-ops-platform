@@ -108,12 +108,20 @@ export type EmailStatus = (typeof EmailStatus)[keyof typeof EmailStatus];
 export const AgentKey = {
   ENGAGEMENT: 'ENGAGEMENT',
   RENEWAL: 'RENEWAL',
+  // Fully autonomous agents (see backend/src/ai/agents/) — no human
+  // approval step, since these are mechanical/administrative, not
+  // relationship-tone content. Every action they take still gets logged as
+  // an AgentSuggestion with status AUTO_SENT for visibility.
+  WORKSHOP_REMINDER: 'WORKSHOP_REMINDER',
+  RENEWAL_CYCLE_OPENER: 'RENEWAL_CYCLE_OPENER',
 } as const;
 export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
 
 export const SuggestionType = {
   FOLLOWUP_EMAIL: 'FOLLOWUP_EMAIL',
   RENEWAL_PITCH: 'RENEWAL_PITCH',
+  WORKSHOP_REMINDER_SENT: 'WORKSHOP_REMINDER_SENT',
+  RENEWAL_CYCLE_OPENED: 'RENEWAL_CYCLE_OPENED',
 } as const;
 export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
 
@@ -122,5 +130,8 @@ export const SuggestionStatus = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
   SENT: 'SENT',
+  // A fully autonomous agent already took this action — nothing for a
+  // human to approve, this row exists purely as an audit trail.
+  AUTO_SENT: 'AUTO_SENT',
 } as const;
 export type SuggestionStatus = (typeof SuggestionStatus)[keyof typeof SuggestionStatus];
