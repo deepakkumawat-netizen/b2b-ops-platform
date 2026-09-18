@@ -36,6 +36,23 @@ Seeded dev logins (password `changeme123` for all):
 Welcome/workshop emails are skipped (and logged as `SKIPPED` in `EmailLog`) unless
 `RESEND_API_KEY` is set in `backend/.env`.
 
+## Deploying to Render
+
+`render.yaml` provisions a single web service (the backend serves the built
+frontend itself). In the Render dashboard: **New +** → **Blueprint** → point
+it at this repo. After the first deploy, set `DATABASE_URL` (your Neon
+connection string) in the service's environment tab, then run the migration
+once from a machine with direct DB access:
+
+```bash
+DATABASE_URL="<neon connection string>" npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+DATABASE_URL="<neon connection string>" npx prisma db seed --schema=backend/prisma/schema.prisma
+```
+
+(`prisma migrate deploy` isn't run in Render's build step — its migration
+engine can't reliably reach Neon from Render's network, even though the app
+itself connects fine via the Neon driver adapter in `prisma.service.ts`.)
+
 ## Structure
 
 - `backend/src/schools` — the School record + SOP phase, scoped via `common/scope.ts`'s

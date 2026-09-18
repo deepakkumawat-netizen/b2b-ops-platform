@@ -1,0 +1,50 @@
+# Render Blueprint — one web service (backend serves the built frontend
+# itself, see backend/src/app.module.ts's ServeStaticModule). Native Node
+# runtime — no Docker.
+#
+# Deploy: push this repo to GitHub, then in the Render dashboard use
+# "New +" -> "Blueprint" and point it at the repo. Render reads this file
+# and provisions everything below in one go.
+#
+# Postgres is deliberately NOT provisioned here — this project uses Neon
+# (see backend/src/prisma/prisma.service.ts's driver adapter, needed because
+# Render can't route IPv6 to Neon and Prisma's default engine bypasses
+# Node's dns module). Paste the Neon connection string into DATABASE_URL
+# below via the Render dashboard after the first deploy (marked sync: false,
+# so Render prompts for it instead of guessing a value).
+
+services:
+  - type: web
+    name: b2b-ops-platform
+    runtime: node
+    plan: free
+    buildCommand: >-
+      npm install &&
+      npm run build --workspace packages/shared &&
+      npx prisma generate --schema=backend/prisma/schema.prisma &&
+      npm run build --workspace backend &&
+      npm run build --workspace frontend
+    # `prisma migrate deploy` is deliberately NOT run here — its CLI/migrate
+    # engine resolves/connects to the DB itself (a separate Rust component)
+    # and cannot reliably reach Neon from Render's network, even though the
+    # app itself connects fine via the driver adapter. Run migrations
+    # manually from a machine with direct DB access instead:
+    #   DATABASE_URL="<neon connection string>" npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+    startCommand: node backend/dist/src/main.js
+    envVars:
+      - key: DATABASE_URL
+        sync: false # paste your Neon connection string here
+      - key: JWT_ACCESS_SECRET
+        generateValue: true # Render generates a strong random secret at deploy time
+      - key: JWT_ACCESS_TTL
+        value: 8h
+      # Welcome/workshop emails (backend/src/notifications/mailer.service.ts).
+      # Leaving these unset is safe — every attempt still gets an EmailLog
+      # row, marked SKIPPED, instead of throwing. Get a free key at
+      # resend.com/api-keys (100 emails/day). Until you verify a sending
+      # domain there, RESEND_FROM can only actually deliver to the email you
+      # signed up with.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: onboarding@resend.dev # switch to something @codevidhya.com once that domain is verified in Resend

@@ -1,5 +1,14 @@
 generator client {
   provider = "prisma-client-js"
+  // Render can't route IPv6 to Neon's endpoint, and Prisma's default Rust
+  // query engine resolves/connects to the DB itself — bypassing Node's dns
+  // module entirely, so NODE_OPTIONS=--dns-result-order=ipv4first has no
+  // effect on it (confirmed failure mode on the reference TicketPlatform
+  // project: every query failed with P1001 despite a correct connection
+  // string). driverAdapters routes connections through the `pg`-compatible
+  // Neon serverless driver instead, which uses Node's own net/dns stack and
+  // does respect that setting — see prisma.service.ts.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
