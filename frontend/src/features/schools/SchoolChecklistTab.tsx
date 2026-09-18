@@ -30,26 +30,44 @@ export function SchoolChecklistTab({ schoolId, token }: { schoolId: string; toke
   return (
     <div>
       {error && <p className="error">{error}</p>}
-      {Object.entries(grouped).map(([phase, phaseTasks]) => (
-        <div key={phase} className="checklist-phase">
-          <h3>{phase.replace(/_/g, ' ')}</h3>
-          <ul className="checklist">
-            {phaseTasks.map((t) => (
-              <li key={t.id} className={t.status === PhaseTaskStatus.DONE ? 'done' : ''}>
-                <label>
-                  <input type="checkbox" checked={t.status === PhaseTaskStatus.DONE} onChange={() => toggle(t)} />
-                  {t.template.label}
-                </label>
-                {t.completedByStaff && (
-                  <span className="muted small">
-                    ✓ {t.completedByStaff.name} {t.completedAt ? `on ${new Date(t.completedAt).toLocaleDateString()}` : ''}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      <p className="muted small" style={{ marginTop: 0 }}>Click anywhere on a task to mark it done — no need to hit the checkbox exactly.</p>
+      {Object.entries(grouped).map(([phase, phaseTasks]) => {
+        const doneCount = phaseTasks.filter((t) => t.status === PhaseTaskStatus.DONE).length;
+        return (
+          <div key={phase} className="checklist-phase">
+            <h3>
+              <span>{phase.replace(/_/g, ' ')}</span>
+              <span>
+                {doneCount}/{phaseTasks.length} done
+              </span>
+            </h3>
+            <ul className="checklist">
+              {phaseTasks.map((t) => (
+                <li
+                  key={t.id}
+                  className={`clickable-row${t.status === PhaseTaskStatus.DONE ? ' done' : ''}`}
+                  onClick={() => toggle(t)}
+                >
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={t.status === PhaseTaskStatus.DONE}
+                      onChange={() => toggle(t)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    {t.template.label}
+                  </label>
+                  {t.completedByStaff && (
+                    <span className="muted small">
+                      ✓ {t.completedByStaff.name} {t.completedAt ? `on ${new Date(t.completedAt).toLocaleDateString()}` : ''}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
       {tasks.length === 0 && <p className="muted">No checklist tasks found.</p>}
     </div>
   );

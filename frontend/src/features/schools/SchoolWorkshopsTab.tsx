@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { WorkshopStatus } from '@b2b-ops/shared';
 import { api, Workshop } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { CalendarIcon } from '../../components/icons';
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   [WorkshopStatus.SCHEDULED]: 'badge badge-muted',
@@ -95,7 +97,13 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
             {w.feedbackSummary && <p className="small">Feedback: {w.feedbackSummary}</p>}
           </div>
         ))}
-        {workshops.length === 0 && <p className="muted">No workshops scheduled yet.</p>}
+        {workshops.length === 0 && (
+          <EmptyState
+            icon={<CalendarIcon width={22} height={22} />}
+            title="No workshops scheduled yet"
+            text="Use the form below to schedule the first student workshop for this school."
+          />
+        )}
       </div>
 
       <h3>Schedule a workshop</h3>

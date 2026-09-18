@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SuggestionStatus } from '@b2b-ops/shared';
 import { AgentSuggestion, api, staffToken, staffUser } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { SparkleIcon } from '../../components/icons';
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   [SuggestionStatus.PENDING]: 'badge badge-warning',
@@ -94,7 +96,13 @@ export function AgentSuggestionsPage() {
       {error && <p className="error">{error}</p>}
 
       <h2>Pending review</h2>
-      {pending.length === 0 && <p className="muted">Nothing to review right now.</p>}
+      {pending.length === 0 && (
+        <EmptyState
+          icon={<SparkleIcon width={22} height={22} />}
+          title="Nothing to review right now"
+          text={isSuperAdmin ? 'Click "Run agents now" above to check for schools that need a nudge.' : 'Check back later — the AI agents run automatically.'}
+        />
+      )}
       <div className="workshop-list">
         {pending.map((s) => {
           const e = edited(s);
