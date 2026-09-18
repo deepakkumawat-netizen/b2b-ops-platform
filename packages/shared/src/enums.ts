@@ -101,3 +101,26 @@ export const EmailStatus = {
   SKIPPED: 'SKIPPED',
 } as const;
 export type EmailStatus = (typeof EmailStatus)[keyof typeof EmailStatus];
+
+// Which scanner produced an AgentSuggestion — see backend/src/ai/agents/.
+// Adding a new agent later is just a new value here plus a new scanner
+// writing into the same AgentSuggestion table.
+export const AgentKey = {
+  ENGAGEMENT: 'ENGAGEMENT',
+  RENEWAL: 'RENEWAL',
+} as const;
+export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
+
+export const SuggestionType = {
+  FOLLOWUP_EMAIL: 'FOLLOWUP_EMAIL',
+  RENEWAL_PITCH: 'RENEWAL_PITCH',
+} as const;
+export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
+
+export const SuggestionStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SENT: 'SENT',
+} as const;
+export type SuggestionStatus = (typeof SuggestionStatus)[keyof typeof SuggestionStatus];

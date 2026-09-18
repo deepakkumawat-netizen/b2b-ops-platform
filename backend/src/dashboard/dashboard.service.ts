@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RenewalStatus, WorkshopStatus } from '@b2b-ops/shared';
+import { RenewalStatus, SuggestionStatus, WorkshopStatus } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { EngagementService } from '../engagement/engagement.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -50,6 +50,10 @@ export class DashboardService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const pendingAgentSuggestions = await this.prisma.agentSuggestion.count({
+      where: { schoolId: { in: schoolIds }, status: SuggestionStatus.PENDING },
+    });
+
     return {
       totalSchools: schools.length,
       schoolsByPhase,
@@ -57,6 +61,7 @@ export class DashboardService {
       overdueCalls,
       upcomingWorkshops,
       pendingRenewals,
+      pendingAgentSuggestions,
     };
   }
 }

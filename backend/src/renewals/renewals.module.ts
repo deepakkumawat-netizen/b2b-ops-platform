@@ -5,5 +5,6 @@ import { RenewalsController } from './renewals.controller';
 @Module({
   controllers: [RenewalsController],
   providers: [RenewalsService],
+  exports: [RenewalsService],
 })
 export class RenewalsModule {}

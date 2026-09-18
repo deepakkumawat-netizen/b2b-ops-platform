@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import {
+  AgentKey,
   CompetitionType,
   EngagementType,
   PhaseTaskStatus,
@@ -7,6 +8,8 @@ import {
   SchoolLifecyclePhase,
   SchoolStatus,
   StaffRole,
+  SuggestionStatus,
+  SuggestionType,
   TrainingMode,
   WorkshopStatus,
 } from '@b2b-ops/shared';
@@ -184,6 +187,21 @@ export type Dashboard = {
   overdueCalls: { schoolId: string; name: string; lastCallDate: string | null }[];
   upcomingWorkshops: (Workshop & { school: { name: string } })[];
   pendingRenewals: (RenewalCycle & { school: { name: string } })[];
+  pendingAgentSuggestions: number;
+};
+
+export type AgentSuggestion = {
+  id: string;
+  schoolId: string;
+  school: { id: string; name: string };
+  agentKey: AgentKey;
+  suggestionType: SuggestionType;
+  draftSubject: string;
+  draftBody: string;
+  reasoning: string;
+  status: SuggestionStatus;
+  reviewedAt: string | null;
+  createdAt: string;
 };
 
 export const api = {
@@ -284,4 +302,13 @@ export const api = {
     request<YearSummary>(`/schools/${schoolId}/renewals/year-summary`, { token }),
 
   getDashboard: (token: string) => request<Dashboard>('/dashboard', { token }),
+
+  listAgentSuggestions: (token: string) => request<AgentSuggestion[]>('/agent-suggestions', { token }),
+  updateAgentSuggestion: (id: string, dto: { draftSubject?: string; draftBody?: string }, token: string) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(dto), token }),
+  approveAgentSuggestion: (id: string, token: string) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}/approve`, { method: 'POST', token }),
+  rejectAgentSuggestion: (id: string, token: string) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}/reject`, { method: 'POST', token }),
+  runAgentsNow: (token: string) => request<{ engagement: number; renewal: number }>('/agent-suggestions/run', { method: 'POST', token }),
 };

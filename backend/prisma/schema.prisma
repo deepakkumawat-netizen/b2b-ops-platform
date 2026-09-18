@@ -40,6 +40,7 @@ model Staff {
   salesRepSchools       School[]          @relation("SalesRep")
   completedPhaseTasks   SchoolPhaseTask[] @relation("CompletedBy")
   engagementLogs        EngagementLog[]
+  reviewedSuggestions   AgentSuggestion[]
 }
 
 // ── School (the B2B account) & its 10-phase SOP lifecycle ───────────────
@@ -93,14 +94,15 @@ model School {
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
 
-  phaseTasks      SchoolPhaseTask[]
-  teachers        Teacher[]
-  infraDiagnostic InfraDiagnostic?
-  workshops       Workshop[]
-  engagementLogs  EngagementLog[]
-  competitions    CompetitionParticipation[]
-  renewalCycles   RenewalCycle[]
-  emailLogs       EmailLog[]
+  phaseTasks        SchoolPhaseTask[]
+  teachers          Teacher[]
+  infraDiagnostic   InfraDiagnostic?
+  workshops         Workshop[]
+  engagementLogs    EngagementLog[]
+  competitions      CompetitionParticipation[]
+  renewalCycles     RenewalCycle[]
+  emailLogs         EmailLog[]
+  agentSuggestions  AgentSuggestion[]
 }
 
 // ── Phase-task checklist engine ──────────────────────────────────────────
@@ -283,4 +285,44 @@ model EmailLog {
   status           EmailStatus
   providerResponse String?
   sentAt           DateTime    @default(now())
+}
+
+// ── AI agents ──────────────────────────────────────────────────────────────
+// One shared queue every agent scanner writes into — a proposed action a
+// human reviews, never one that's executed automatically. Approving sends
+// via the existing NotificationsService (same EmailLog audit trail as every
+// other email in the app); rejecting just leaves a record of what the AI
+// suggested and that a human declined it.
+
+enum AgentKey {
+  ENGAGEMENT
+  RENEWAL
+}
+
+enum SuggestionType {
+  FOLLOWUP_EMAIL
+  RENEWAL_PITCH
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT
+}
+
+model AgentSuggestion {
+  id                 String           @id @default(cuid())
+  schoolId           String
+  school             School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  agentKey           AgentKey
+  suggestionType     SuggestionType
+  draftSubject       String
+  draftBody          String
+  reasoning          String
+  status             SuggestionStatus @default(PENDING)
+  reviewedByStaffId  String?
+  reviewedByStaff    Staff?           @relation(fields: [reviewedByStaffId], references: [id])
+  reviewedAt         DateTime?
+  createdAt          DateTime         @default(now())
 }

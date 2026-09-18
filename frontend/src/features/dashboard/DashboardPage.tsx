@@ -54,6 +54,10 @@ export function DashboardPage() {
           <span className="stat-value">{data.pendingRenewals.length}</span>
           <span className="stat-label">Pending Renewals</span>
         </div>
+        <Link to="/agent-suggestions" className="stat-tile stat-tile-link">
+          <span className="stat-value">{data.pendingAgentSuggestions}</span>
+          <span className="stat-label">AI Suggestions</span>
+        </Link>
       </div>
 
       <section className="card">

@@ -22,6 +22,9 @@ export function StaffLayout() {
           <NavLink to="/schools" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
             Schools
           </NavLink>
+          <NavLink to="/agent-suggestions" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
+            AI Suggestions
+          </NavLink>
           {(me?.role === 'SALES' || me?.role === 'SUPER_ADMIN') && (
             <NavLink to="/schools/new" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
               New School (Handover)

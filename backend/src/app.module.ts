@@ -2,6 +2,7 @@ import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -17,6 +18,7 @@ import { CompetitionsModule } from './competitions/competitions.module';
 import { RenewalsModule } from './renewals/renewals.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -25,6 +27,9 @@ import { NotificationsModule } from './notifications/notifications.module';
     // @Throttle (see staff-auth.controller.ts) since it's the actual
     // brute-force target.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+    // Powers AgentRunnerService's daily @Cron scan — see its own comment for
+    // why the manual "Run agents now" endpoint exists alongside it.
+    ScheduleModule.forRoot(),
     // Serves the built frontend (frontend/dist) from this same process in
     // production. Excluding /api/(.*) is the only thing that keeps this
     // from swallowing API routes (see main.ts's setGlobalPrefix('api')).
@@ -44,6 +49,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     RenewalsModule,
     DashboardModule,
     NotificationsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

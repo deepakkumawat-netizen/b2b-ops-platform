@@ -48,3 +48,16 @@ services:
         sync: false
       - key: RESEND_FROM
         value: onboarding@resend.dev # switch to something @codevidhya.com once that domain is verified in Resend
+      # AI agent suggestions (backend/src/ai). Leaving these unset is safe —
+      # agents just produce no drafts instead of throwing. Gemini is tried
+      # first; get a free key at aistudio.google.com/apikey. Groq is the
+      # fallback for when Gemini's free-tier rate limit is hit — get a free
+      # key at console.groq.com/keys.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b

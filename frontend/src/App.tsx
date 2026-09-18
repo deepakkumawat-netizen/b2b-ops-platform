@@ -6,6 +6,7 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SchoolsListPage } from './features/schools/SchoolsListPage';
 import { NewSchoolPage } from './features/schools/NewSchoolPage';
 import { SchoolDetailPage } from './features/schools/SchoolDetailPage';
+import { AgentSuggestionsPage } from './features/agent-suggestions/AgentSuggestionsPage';
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
           <Route path="/schools" element={<SchoolsListPage />} />
           <Route path="/schools/new" element={<NewSchoolPage />} />
           <Route path="/schools/:id" element={<SchoolDetailPage />} />
+          <Route path="/agent-suggestions" element={<AgentSuggestionsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
