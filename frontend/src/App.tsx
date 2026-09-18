@@ -1,0 +1,25 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { RequireAuth } from './app/RequireAuth';
+import { StaffLayout } from './app/StaffLayout';
+import { LoginPage } from './features/auth/LoginPage';
+import { DashboardPage } from './features/dashboard/DashboardPage';
+import { SchoolsListPage } from './features/schools/SchoolsListPage';
+import { NewSchoolPage } from './features/schools/NewSchoolPage';
+import { SchoolDetailPage } from './features/schools/SchoolDetailPage';
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<StaffLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/schools" element={<SchoolsListPage />} />
+          <Route path="/schools/new" element={<NewSchoolPage />} />
+          <Route path="/schools/:id" element={<SchoolDetailPage />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}

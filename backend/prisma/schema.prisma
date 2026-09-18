@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Staff / auth ──────────────────────────────────────────────────────────
+
+enum StaffRole {
+  SUPER_ADMIN
+  SALES
+  ACCOUNT_MANAGER
+  OPERATIONS
+  TRAINING
+}
+
+model Staff {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         StaffRole
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accountManagerSchools School[]          @relation("AccountManager")
+  salesRepSchools       School[]          @relation("SalesRep")
+  completedPhaseTasks   SchoolPhaseTask[] @relation("CompletedBy")
+  engagementLogs        EngagementLog[]
+}
+
+// ── School (the B2B account) & its 10-phase SOP lifecycle ───────────────
+
+enum SchoolLifecyclePhase {
+  SALES_HANDOVER
+  WELCOME
+  ORIENTATION
+  ONBOARDING_SETUP
+  DATA_COLLECTION_LMS
+  INFRA_DIAGNOSTIC
+  TEACHER_TRAINING
+  ONGOING_ENGAGEMENT
+  COMPETITIONS
+  ANNUAL_RENEWAL
+}
+
+enum TrainingMode {
+  ONLINE
+  OFFLINE
+}
+
+enum SchoolStatus {
+  ACTIVE
+  RENEWED
+  CHURNED
+}
+
+model School {
+  id                       String                @id @default(cuid())
+  name                     String
+  city                     String?
+  state                    String?
+  ownerName                String?
+  ownerDesignation         String?
+  ownerEmail               String?
+  ownerPhone               String?
+  productProgram           String?
+  gradeFrom                String?
+  gradeTo                  String?
+  workshopsCommitted       Int?
+  trainingMode             TrainingMode?
+  specialCommitments       String?
+  totalStudents            Int?
+  currentPhase             SchoolLifecyclePhase @default(SALES_HANDOVER)
+  status                   SchoolStatus         @default(ACTIVE)
+  assignedAccountManagerId String?
+  assignedAccountManager   Staff?               @relation("AccountManager", fields: [assignedAccountManagerId], references: [id])
+  assignedSalesRepId       String?
+  assignedSalesRep         Staff?               @relation("SalesRep", fields: [assignedSalesRepId], references: [id])
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  phaseTasks      SchoolPhaseTask[]
+  teachers        Teacher[]
+  infraDiagnostic InfraDiagnostic?
+  workshops       Workshop[]
+  engagementLogs  EngagementLog[]
+  competitions    CompetitionParticipation[]
+  renewalCycles   RenewalCycle[]
+  emailLogs       EmailLog[]
+}
+
+// ── Phase-task checklist engine ──────────────────────────────────────────
+// PhaseTaskTemplate is the static, seeded SOP step list (one row per step,
+// e.g. "Welcome call made"). SchoolPhaseTask is the per-school instance,
+// auto-created for every template row when a School is created.
+
+enum PhaseTaskStatus {
+  PENDING
+  DONE
+  NA
+}
+
+model PhaseTaskTemplate {
+  id        String               @id @default(cuid())
+  phase     SchoolLifecyclePhase
+  key       String               @unique
+  label     String
+  ownerRole StaffRole?
+  sortOrder Int                  @default(0)
+
+  schoolTasks SchoolPhaseTask[]
+}
+
+model SchoolPhaseTask {
+  id                 String            @id @default(cuid())
+  schoolId           String
+  school             School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  templateId         String
+  template           PhaseTaskTemplate @relation(fields: [templateId], references: [id])
+  status             PhaseTaskStatus   @default(PENDING)
+  completedByStaffId String?
+  completedByStaff   Staff?            @relation("CompletedBy", fields: [completedByStaffId], references: [id])
+  completedAt        DateTime?
+  notes              String?
+
+  @@unique([schoolId, templateId])
+}
+
+// ── Teachers & infra diagnostic (SOP Phase 3/5/6) ────────────────────────
+
+model Teacher {
+  id                     String    @id @default(cuid())
+  schoolId               String
+  school                 School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name                   String
+  phone                  String?
+  designation            String?
+  gradeAssigned          String?
+  lmsCredentialGenerated Boolean   @default(false)
+  trainedAt              DateTime?
+  createdAt              DateTime  @default(now())
+}
+
+model InfraDiagnostic {
+  id                    String   @id @default(cuid())
+  schoolId              String   @unique
+  school                School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  labCapacity           String?
+  internetConnectivity  String?
+  systemsPerStudent     String?
+  recommendedSessionMix String?
+  submittedAt           DateTime @default(now())
+}
+
+// ── Ongoing engagement: workshops, visits, calls (SOP Phase 8) ──────────
+
+enum WorkshopStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+model Workshop {
+  id                 String         @id @default(cuid())
+  schoolId           String
+  school             School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  topic              String
+  targetGrades       String?
+  scheduledAt        DateTime
+  status             WorkshopStatus @default(SCHEDULED)
+  confirmationSentAt DateTime?
+  reminderSentAt     DateTime?
+  completedAt        DateTime?
+  feedbackFormSentAt DateTime?
+  feedbackReceivedAt DateTime?
+  feedbackSummary    String?
+  cancelReason       String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+enum EngagementType {
+  MONTHLY_VISIT
+  WEEKLY_CALL
+}
+
+model EngagementLog {
+  id                 String         @id @default(cuid())
+  schoolId           String
+  school             School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  type               EngagementType
+  date               DateTime
+  conductedByStaffId String?
+  conductedByStaff   Staff?         @relation(fields: [conductedByStaffId], references: [id])
+  summary            String?
+  issuesRaised       String?
+  createdAt          DateTime       @default(now())
+}
+
+// ── Competitions (SOP Phase 9) ───────────────────────────────────────────
+
+enum CompetitionType {
+  INTERNAL
+  EXTERNAL
+}
+
+model CompetitionParticipation {
+  id                   String          @id @default(cuid())
+  schoolId             String
+  school               School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name                 String
+  type                 CompetitionType
+  date                 DateTime
+  studentsParticipated Int?
+  certificatesIssued   Boolean         @default(false)
+  prizesAwarded        String?
+  teacherCertified     Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+}
+
+// ── Annual feedback & renewal (SOP Phase 10) ─────────────────────────────
+// The "summary of the year's activities" the SOP requires for renewal
+// conversations is compiled on read from Workshop/CompetitionParticipation/
+// EngagementLog by RenewalsService — not stored redundantly here.
+
+enum RenewalStatus {
+  PENDING
+  APPROACHED
+  AGREED
+  DECLINED
+  SIGNED
+}
+
+model RenewalCycle {
+  id                String        @id @default(cuid())
+  schoolId          String
+  school            School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  cycleLabel        String
+  feedbackCallDate  DateTime?
+  feedbackSummary   String?
+  renewalStatus     RenewalStatus @default(PENDING)
+  agreementSignedAt DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([schoolId, cycleLabel])
+}
+
+// ── Email audit trail ─────────────────────────────────────────────────────
+// Every email MailerService attempts to send gets a row here regardless of
+// whether the send actually succeeded — see mailer.service.ts's
+// best-effort philosophy (an email failure must never block the caller).
+
+enum EmailStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model EmailLog {
+  id               String      @id @default(cuid())
+  schoolId         String?
+  school           School?     @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  recipient        String
+  templateKey      String
+  subject          String
+  status           EmailStatus
+  providerResponse String?
+  sentAt           DateTime    @default(now())
+}
