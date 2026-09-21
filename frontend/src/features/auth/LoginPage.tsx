@@ -2,9 +2,15 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, staffToken, staffUser } from '../../lib/api';
 
+// Dev-only convenience while the tool is under construction — pre-fills the
+// seeded Super Admin login so whoever's testing locally doesn't retype it.
+// import.meta.env.DEV is false in the production build, so this literal
+// value never ships in the bundle Render serves publicly.
+const DEV_ADMIN_LOGIN = import.meta.env.DEV ? { email: 'admin@b2bops.dev', password: 'changeme123' } : null;
+
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(DEV_ADMIN_LOGIN?.email ?? '');
+  const [password, setPassword] = useState(DEV_ADMIN_LOGIN?.password ?? '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
