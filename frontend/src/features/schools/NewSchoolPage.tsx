@@ -155,7 +155,7 @@ export function NewSchoolPage() {
             international
             countryCallingCodeEditable={false}
             flags={flags}
-            country={form.countryCode as never}
+            defaultCountry={form.countryCode as never}
             value={form.ownerPhone}
             onChange={(value) => set('ownerPhone', value ?? '')}
           />
