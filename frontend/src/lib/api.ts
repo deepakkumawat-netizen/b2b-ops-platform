@@ -212,6 +212,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+  staffSignup: (dto: { name: string; email: string; password: string; role: StaffRole }) =>
+    request<{ accessToken: string; staff: StaffUser }>('/auth/staff/signup', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    }),
 
   listSchools: (token: string) => request<School[]>('/schools', { token }),
   getSchool: (id: string, token: string) => request<School>(`/schools/${id}`, { token }),

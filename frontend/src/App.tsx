@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './app/RequireAuth';
 import { StaffLayout } from './app/StaffLayout';
 import { LoginPage } from './features/auth/LoginPage';
+import { SignupPage } from './features/auth/SignupPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SchoolsListPage } from './features/schools/SchoolsListPage';
 import { NewSchoolPage } from './features/schools/NewSchoolPage';
@@ -12,6 +13,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<StaffLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />

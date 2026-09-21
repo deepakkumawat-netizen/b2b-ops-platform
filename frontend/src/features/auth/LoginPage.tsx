@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, staffToken, staffUser } from '../../lib/api';
 
 export function LoginPage() {
@@ -27,21 +27,30 @@ export function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <form className="auth-form" onSubmit={onSubmit} autoComplete="off">
+      <form className="auth-form" onSubmit={onSubmit}>
         <h1>B2B Ops Platform</h1>
         <p className="auth-subtitle">School onboarding &amp; lifecycle tracker</p>
         <label>
           Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="off" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus autoComplete="email" />
         </label>
         <label>
           Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="off" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
+        <p className="auth-switch">
+          Need access? <Link to="/signup">Create an account</Link>
+        </p>
       </form>
     </div>
   );
