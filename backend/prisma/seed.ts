@@ -66,12 +66,15 @@ const PHASE_TASK_TEMPLATES: {
   { phase: SchoolLifecyclePhase.ANNUAL_RENEWAL, key: 'renewal_agreement_signed', label: 'Signed renewal agreement obtained', ownerRole: StaffRole.SALES, sortOrder: 102 },
 ];
 
+// Distinct person-like names on purpose — the topbar shows the role badge
+// AND the name right next to each other, so a name that just repeats the
+// role ("Super Admin" next to a "SUPER ADMIN" badge) reads as a duplicate.
 const DEV_STAFF: { name: string; email: string; role: StaffRole }[] = [
-  { name: 'Super Admin', email: 'admin@b2bops.dev', role: StaffRole.SUPER_ADMIN },
-  { name: 'Sales Rep', email: 'sales@b2bops.dev', role: StaffRole.SALES },
-  { name: 'Account Manager', email: 'am@b2bops.dev', role: StaffRole.ACCOUNT_MANAGER },
-  { name: 'Operations', email: 'ops@b2bops.dev', role: StaffRole.OPERATIONS },
-  { name: 'Trainer', email: 'training@b2bops.dev', role: StaffRole.TRAINING },
+  { name: 'Aditi Rao', email: 'admin@b2bops.dev', role: StaffRole.SUPER_ADMIN },
+  { name: 'Rohan Mehta', email: 'sales@b2bops.dev', role: StaffRole.SALES },
+  { name: 'Priya Nair', email: 'am@b2bops.dev', role: StaffRole.ACCOUNT_MANAGER },
+  { name: 'Karan Verma', email: 'ops@b2bops.dev', role: StaffRole.OPERATIONS },
+  { name: 'Neha Joshi', email: 'training@b2bops.dev', role: StaffRole.TRAINING },
 ];
 const DEV_PASSWORD = 'changeme123';
 
