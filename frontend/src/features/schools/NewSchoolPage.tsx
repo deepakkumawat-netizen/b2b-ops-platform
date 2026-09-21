@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 import PhoneInput from 'react-phone-number-input';
+import flags from 'react-phone-number-input/flags';
 import 'react-phone-number-input/style.css';
 import { TrainingMode } from '@b2b-ops/shared';
 import { api, staffToken } from '../../lib/api';
@@ -153,6 +154,7 @@ export function NewSchoolPage() {
           <PhoneInput
             international
             countryCallingCodeEditable={false}
+            flags={flags}
             country={form.countryCode as never}
             value={form.ownerPhone}
             onChange={(value) => set('ownerPhone', value ?? '')}
