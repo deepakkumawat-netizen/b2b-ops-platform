@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
-import PhoneInput from 'react-phone-number-input';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import flags from 'react-phone-number-input/flags';
 import 'react-phone-number-input/style.css';
 import { TrainingMode } from '@b2b-ops/shared';
@@ -153,12 +153,18 @@ export function NewSchoolPage() {
           Phone
           <PhoneInput
             international
+            limitMaxLength
             countryCallingCodeEditable={false}
             flags={flags}
             defaultCountry={form.countryCode as never}
             value={form.ownerPhone}
             onChange={(value) => set('ownerPhone', value ?? '')}
           />
+          {form.ownerPhone && !isValidPhoneNumber(form.ownerPhone) && (
+            <span className="error" style={{ fontSize: 12.5 }}>
+              Enter a valid phone number for the selected country
+            </span>
+          )}
         </label>
 
         <div className="form-section-title">Program &amp; commitments</div>
