@@ -15,6 +15,10 @@ export class CreateSchoolDto {
 
   @IsOptional()
   @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
   ownerName?: string;
 
   @IsOptional()

@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@b2b-ops/shared": "*",
+    "country-state-city": "^3.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-phone-number-input": "^3.4.18",
     "react-router-dom": "^6.26.1"
   },
   "devDependencies": {

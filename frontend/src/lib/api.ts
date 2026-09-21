@@ -82,6 +82,7 @@ export type School = {
   name: string;
   city: string | null;
   state: string | null;
+  country: string | null;
   ownerName: string | null;
   ownerDesignation: string | null;
   ownerEmail: string | null;

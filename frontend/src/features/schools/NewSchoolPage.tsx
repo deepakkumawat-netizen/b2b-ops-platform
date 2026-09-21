@@ -1,7 +1,13 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Country, State, City } from 'country-state-city';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { TrainingMode } from '@b2b-ops/shared';
 import { api, staffToken } from '../../lib/api';
+
+const INDIA_ISO = 'IN';
+const countries = Country.getAllCountries();
 
 // SOP Phase 1 — Sales-to-Operations Handover: the fields the SOP requires be
 // captured before any onboarding activity begins.
@@ -10,8 +16,9 @@ export function NewSchoolPage() {
   const token = staffToken.get()!;
   const [form, setForm] = useState({
     name: '',
+    countryCode: INDIA_ISO,
+    stateCode: '',
     city: '',
-    state: '',
     ownerName: '',
     ownerDesignation: '',
     ownerEmail: '',
@@ -30,14 +37,41 @@ export function NewSchoolPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const states = useMemo(() => State.getStatesOfCountry(form.countryCode), [form.countryCode]);
+  const districts = useMemo(
+    () => (form.stateCode ? City.getCitiesOfState(form.countryCode, form.stateCode) : []),
+    [form.countryCode, form.stateCode],
+  );
+
+  function onCountryChange(isoCode: string) {
+    setForm((f) => ({ ...f, countryCode: isoCode, stateCode: '', city: '' }));
+  }
+
+  function onStateChange(isoCode: string) {
+    setForm((f) => ({ ...f, stateCode: isoCode, city: '' }));
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
+      const country = Country.getCountryByCode(form.countryCode)?.name;
+      const state = states.find((s) => s.isoCode === form.stateCode)?.name;
       const school = await api.createSchool(
         {
-          ...form,
+          name: form.name,
+          country,
+          state,
+          city: form.city || undefined,
+          ownerName: form.ownerName,
+          ownerDesignation: form.ownerDesignation,
+          ownerEmail: form.ownerEmail,
+          ownerPhone: form.ownerPhone,
+          productProgram: form.productProgram,
+          gradeFrom: form.gradeFrom,
+          gradeTo: form.gradeTo,
+          specialCommitments: form.specialCommitments,
           workshopsCommitted: form.workshopsCommitted ? Number(form.workshopsCommitted) : undefined,
           trainingMode: form.trainingMode || undefined,
         },
@@ -65,12 +99,40 @@ export function NewSchoolPage() {
           <input value={form.name} onChange={(e) => set('name', e.target.value)} required />
         </label>
         <label>
-          City
-          <input value={form.city} onChange={(e) => set('city', e.target.value)} />
+          Country
+          <select value={form.countryCode} onChange={(e) => onCountryChange(e.target.value)}>
+            {countries.map((c) => (
+              <option key={c.isoCode} value={c.isoCode}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           State
-          <input value={form.state} onChange={(e) => set('state', e.target.value)} />
+          <select value={form.stateCode} onChange={(e) => onStateChange(e.target.value)} disabled={!states.length}>
+            <option value="">—</option>
+            {states.map((s) => (
+              <option key={s.isoCode} value={s.isoCode}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          District / City
+          <select
+            value={form.city}
+            onChange={(e) => set('city', e.target.value)}
+            disabled={!districts.length}
+          >
+            <option value="">—</option>
+            {districts.map((d) => (
+              <option key={`${d.name}-${d.latitude}`} value={d.name}>
+                {d.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="form-section-title">Owner / Decision-maker</div>
@@ -88,7 +150,13 @@ export function NewSchoolPage() {
         </label>
         <label>
           Phone
-          <input value={form.ownerPhone} onChange={(e) => set('ownerPhone', e.target.value)} />
+          <PhoneInput
+            international
+            countryCallingCodeEditable={false}
+            country={form.countryCode as never}
+            value={form.ownerPhone}
+            onChange={(value) => set('ownerPhone', value ?? '')}
+          />
         </label>
 
         <div className="form-section-title">Program &amp; commitments</div>
