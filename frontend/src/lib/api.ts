@@ -69,6 +69,13 @@ async function request<T>(path: string, opts: RequestInit & { token?: string | n
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    if (res.status === 401 && token) {
+      // Stale/expired/invalidated session — drop it so RequireAuth redirects
+      // to /login instead of leaving every page stuck showing "Unauthorized".
+      staffToken.clear();
+      staffUser.clear();
+      throw new Error('Your session has expired. Please sign in again.');
+    }
     throw new Error(body.message || `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
