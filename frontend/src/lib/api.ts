@@ -79,7 +79,12 @@ async function request<T>(path: string, opts: RequestInit & { token?: string | n
     throw new Error(body.message || `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
-  return res.json();
+  // Nest sends a zero-byte body (not JSON "null") when a handler returns
+  // null/undefined — e.g. GET infra-diagnostic for a school that hasn't
+  // submitted one yet. res.json() throws on that empty body, so read as
+  // text first and only parse when there's something there.
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 // ── Domain types (mirror backend Prisma shapes closely enough for display) ─
