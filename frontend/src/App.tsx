@@ -12,6 +12,7 @@ import { AgentSuggestionsPage } from './features/agent-suggestions/AgentSuggesti
 export function App() {
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route element={<RequireAuth />}>
@@ -23,7 +24,7 @@ export function App() {
           <Route path="/agent-suggestions" element={<AgentSuggestionsPage />} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
