@@ -17,7 +17,7 @@ export class GeminiService {
 
   constructor(private config: ConfigService) {
     this.apiKey = this.config.get<string>('GEMINI_API_KEY') || undefined;
-    this.model = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.0-flash';
+    this.model = this.config.get<string>('GEMINI_MODEL') ?? 'gemini-3.6-flash';
   }
 
   isConfigured(): boolean {
