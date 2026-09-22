@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { RenewalStatus } from '@b2b-ops/shared';
 import { api, RenewalCycle, YearSummary } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { RefreshIcon } from '../../components/icons';
 
 export function SchoolRenewalsTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [cycles, setCycles] = useState<RenewalCycle[]>([]);
@@ -101,7 +103,13 @@ export function SchoolRenewalsTab({ schoolId, token }: { schoolId: string; token
           </label>
         </div>
       ))}
-      {cycles.length === 0 && <p className="muted">No renewal cycle opened yet.</p>}
+      {cycles.length === 0 && (
+        <EmptyState
+          icon={<RefreshIcon width={22} height={22} />}
+          title="No renewal cycle opened yet"
+          text="Use the form below to open this school's first renewal cycle."
+        />
+      )}
 
       <h3>Open a renewal cycle</h3>
       <form className="form-row" onSubmit={createCycle}>

@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, Teacher } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { BuildingIcon } from '../../components/icons';
 
 export function SchoolTeachersTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -24,47 +26,46 @@ export function SchoolTeachersTab({ schoolId, token }: { schoolId: string; token
   }
 
   async function toggleCredential(teacher: Teacher) {
-    await api.updateTeacher(schoolId, teacher.id, { lmsCredentialGenerated: !teacher.lmsCredentialGenerated }, token);
-    reload();
+    try {
+      await api.updateTeacher(schoolId, teacher.id, { lmsCredentialGenerated: !teacher.lmsCredentialGenerated }, token);
+      reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update teacher');
+    }
   }
 
   return (
     <div>
       {error && <p className="error">{error}</p>}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Designation</th>
-            <th>Grade</th>
-            <th>LMS Credentials</th>
-          </tr>
-        </thead>
-        <tbody>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Click anywhere on a row to toggle LMS credential status.
+      </p>
+
+      {teachers.length === 0 ? (
+        <EmptyState
+          icon={<BuildingIcon width={22} height={22} />}
+          title="No teachers added yet"
+          text="Use the form below to add the first teacher for this school."
+        />
+      ) : (
+        <ul className="row-list">
           {teachers.map((t) => (
-            <tr key={t.id}>
-              <td>{t.name}</td>
-              <td>{t.phone ?? '—'}</td>
-              <td>{t.designation ?? '—'}</td>
-              <td>{t.gradeAssigned ?? '—'}</td>
-              <td>
-                <label>
-                  <input type="checkbox" checked={t.lmsCredentialGenerated} onChange={() => toggleCredential(t)} />
-                  Generated
-                </label>
-              </td>
-            </tr>
+            <li key={t.id} className="clickable-row" onClick={() => toggleCredential(t)}>
+              <div className="row-list-main">
+                <span className="row-list-name">{t.name}</span>
+                <span className="row-list-meta">
+                  {[t.designation, t.gradeAssigned ? `Grade ${t.gradeAssigned}` : null, t.phone].filter(Boolean).join(' · ') || '—'}
+                </span>
+              </div>
+              <div className="row-list-side">
+                <span className={`badge ${t.lmsCredentialGenerated ? 'badge-success' : 'badge-muted'}`}>
+                  {t.lmsCredentialGenerated ? 'LMS credential generated' : 'LMS credential pending'}
+                </span>
+              </div>
+            </li>
           ))}
-          {teachers.length === 0 && (
-            <tr>
-              <td colSpan={5} className="muted">
-                No teachers added yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+        </ul>
+      )}
 
       <h3>Add teacher</h3>
       <form className="form-row" onSubmit={addTeacher}>

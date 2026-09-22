@@ -1,6 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { EngagementType } from '@b2b-ops/shared';
 import { api, EngagementLog } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { CalendarIcon } from '../../components/icons';
+
+const TYPE_LABEL: Record<string, string> = {
+  [EngagementType.MONTHLY_VISIT]: 'Monthly Visit',
+  [EngagementType.WEEKLY_CALL]: 'Weekly Call',
+};
 
 export function SchoolEngagementTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [logs, setLogs] = useState<EngagementLog[]>([]);
@@ -32,33 +39,28 @@ export function SchoolEngagementTab({ schoolId, token }: { schoolId: string; tok
   return (
     <div>
       {error && <p className="error">{error}</p>}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Date</th>
-            <th>Conducted By</th>
-            <th>Summary</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      {logs.length === 0 ? (
+        <EmptyState
+          icon={<CalendarIcon width={22} height={22} />}
+          title="No visits or calls logged yet"
+          text="Use the form below to log the first monthly visit or weekly check-in call."
+        />
+      ) : (
+        <div className="workshop-list">
           {logs.map((l) => (
-            <tr key={l.id}>
-              <td>{l.type.replace(/_/g, ' ')}</td>
-              <td>{new Date(l.date).toLocaleDateString()}</td>
-              <td>{l.conductedByStaff?.name ?? '—'}</td>
-              <td>{l.summary ?? '—'}</td>
-            </tr>
+            <div key={l.id} className="card">
+              <div className="workshop-header">
+                <strong>{TYPE_LABEL[l.type] ?? l.type.replace(/_/g, ' ')}</strong>
+                <span className="badge badge-muted">{new Date(l.date).toLocaleDateString()}</span>
+              </div>
+              <p className="muted small">Conducted by {l.conductedByStaff?.name ?? 'Unknown'}</p>
+              {l.summary && <p className="small">{l.summary}</p>}
+              {l.issuesRaised && <p className="error small">Issue raised: {l.issuesRaised}</p>}
+            </div>
           ))}
-          {logs.length === 0 && (
-            <tr>
-              <td colSpan={4} className="muted">
-                No visits or calls logged yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+        </div>
+      )}
 
       <h3>Log a visit or call</h3>
       <form className="form-row" onSubmit={addLog}>

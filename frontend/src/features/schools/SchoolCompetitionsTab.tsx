@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { CompetitionType } from '@b2b-ops/shared';
 import { api, CompetitionParticipation } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { SparkleIcon } from '../../components/icons';
 
 export function SchoolCompetitionsTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [competitions, setCompetitions] = useState<CompetitionParticipation[]>([]);
@@ -59,35 +61,38 @@ export function SchoolCompetitionsTab({ schoolId, token }: { schoolId: string; t
   return (
     <div>
       {error && <p className="error">{error}</p>}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Date</th>
-            <th>Students</th>
-            <th>Certificates</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      {competitions.length === 0 ? (
+        <EmptyState
+          icon={<SparkleIcon width={22} height={22} />}
+          title="No competitions recorded yet"
+          text="Use the form below to record the first internal or external competition."
+        />
+      ) : (
+        <div className="workshop-list">
           {competitions.map((c) => (
-            <tr key={c.id}>
-              <td>{c.name}</td>
-              <td>{c.type}</td>
-              <td>{new Date(c.date).toLocaleDateString()}</td>
-              <td>{c.studentsParticipated ?? '—'}</td>
-              <td>{c.certificatesIssued ? 'Yes' : 'No'}</td>
-            </tr>
+            <div key={c.id} className="card">
+              <div className="workshop-header">
+                <strong>{c.name}</strong>
+                <span className="badge badge-muted">{c.type}</span>
+              </div>
+              <p className="muted small">
+                {new Date(c.date).toLocaleDateString()}
+                {c.studentsParticipated != null ? ` · ${c.studentsParticipated} student${c.studentsParticipated === 1 ? '' : 's'}` : ''}
+              </p>
+              <div className="button-row" style={{ marginTop: 8 }}>
+                <span className={`badge ${c.certificatesIssued ? 'badge-success' : 'badge-muted'}`}>
+                  {c.certificatesIssued ? 'Certificates issued' : 'No certificates yet'}
+                </span>
+                <span className={`badge ${c.teacherCertified ? 'badge-success' : 'badge-muted'}`}>
+                  {c.teacherCertified ? 'Teacher certified' : 'Teacher not certified'}
+                </span>
+              </div>
+              {c.prizesAwarded && <p className="small" style={{ marginTop: 8 }}>Prizes: {c.prizesAwarded}</p>}
+            </div>
           ))}
-          {competitions.length === 0 && (
-            <tr>
-              <td colSpan={5} className="muted">
-                No competitions recorded yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+        </div>
+      )}
 
       <h3>Record a competition</h3>
       <form className="form-grid" onSubmit={addCompetition}>
