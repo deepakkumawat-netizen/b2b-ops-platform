@@ -184,6 +184,80 @@ a:hover {
   font-size: 12.5px;
 }
 
+/* ── Landing page ─────────────────────────────────────────────────────── */
+
+.landing {
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, #eef2ff 0%, var(--bg) 55%);
+}
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px;
+}
+.landing-brand::before {
+  content: '';
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary) 0%, #818cf8 100%);
+  display: inline-block;
+  margin-right: 9px;
+}
+.landing-hero {
+  max-width: 720px;
+  margin: 64px auto 80px;
+  padding: 0 24px;
+  text-align: center;
+}
+.landing-hero h1 {
+  font-size: 38px;
+  line-height: 1.15;
+  margin: 0 0 18px;
+  letter-spacing: -0.02em;
+}
+.landing-hero-subtitle {
+  font-size: 16px;
+  color: var(--muted);
+  margin: 0 0 28px;
+  line-height: 1.5;
+}
+.landing-hero-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.landing-hero-actions button {
+  padding: 11px 22px;
+  font-size: 14.5px;
+}
+.landing-features {
+  max-width: 1040px;
+  margin: 0 auto 64px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+.landing-feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 22px;
+}
+.landing-feature-card h3 {
+  font-size: 15px;
+  margin: 14px 0 6px;
+}
+.landing-feature-card p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 /* ── Auth ─────────────────────────────────────────────────────────────── */
 
 .auth-shell {
@@ -546,6 +620,121 @@ a:hover {
 .phase-breakdown li strong {
   text-align: right;
   font-weight: 700;
+}
+
+/* ── Phase distribution chart (dashboard) ────────────────────────────────
+   Ordinal/funnel bar chart: one hue, row order carries the sequence, value
+   labeled directly at the tip so nothing is gated behind hover. */
+.phase-chart {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.phase-chart-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 150px 1fr 30px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  padding: 3px 0;
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+.phase-chart-row:hover,
+.phase-chart-row:focus-visible {
+  background: var(--surface-sunken);
+}
+.phase-chart-label {
+  color: var(--text-secondary);
+}
+.phase-chart-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.phase-chart-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--primary);
+  border-radius: 0 4px 4px 0;
+  transition: background 0.1s ease;
+}
+.phase-chart-fill.is-hovered {
+  background: var(--primary-dark);
+}
+.phase-chart-value {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.chart-tooltip {
+  position: absolute;
+  right: 30px;
+  top: -6px;
+  transform: translateY(-100%);
+  background: var(--text);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  z-index: 5;
+}
+.chart-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  background: var(--text);
+  transform: rotate(45deg);
+}
+
+/* ── Status distribution chart (dashboard) ───────────────────────────────
+   Part-to-whole stacked bar, reusing the app's existing status colors. */
+.status-chart-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  gap: 2px;
+}
+.status-chart-segment {
+  height: 100%;
+  min-width: 3px;
+  transition: opacity 0.15s ease;
+}
+.status-chart-segment:hover {
+  opacity: 0.85;
+}
+.status-chart-legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.status-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.status-chart-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .data-table {

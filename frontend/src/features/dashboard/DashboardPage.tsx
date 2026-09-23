@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, Dashboard, staffToken, staffUser } from '../../lib/api';
-import { PHASE_LABELS, PHASE_ORDER } from '../../lib/phases';
+import { api, Dashboard, School, staffToken, staffUser } from '../../lib/api';
 import { AlertIcon, BuildingIcon, CalendarIcon, RefreshIcon, SparkleIcon } from '../../components/icons';
 import { EmptyState } from '../../components/EmptyState';
+import { Skeleton, SkeletonCard } from '../../components/Skeleton';
+import { PhaseDistributionChart } from '../../components/PhaseDistributionChart';
+import { StatusDistributionChart } from '../../components/StatusDistributionChart';
 
 type AttentionItem = {
   schoolId: string;
@@ -33,19 +35,43 @@ function mergeAttentionItems(data: Dashboard): AttentionItem[] {
 
 export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [schools, setSchools] = useState<School[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const token = staffToken.get();
 
   useEffect(() => {
     if (!token) return;
     api.getDashboard(token).then(setData).catch((err) => setError(err.message));
+    api.listSchools(token).then(setSchools).catch(() => setSchools([]));
   }, [token]);
 
   if (error) return <p className="error">{error}</p>;
-  if (!data) return <p className="muted">Loading…</p>;
+  if (!data) {
+    return (
+      <div className="page">
+        <Skeleton height={24} width="40%" style={{ marginBottom: 10 }} />
+        <Skeleton height={14} width="60%" style={{ marginBottom: 24 }} />
+        <div className="stat-row">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="stat-tile">
+              <Skeleton width={42} height={42} style={{ borderRadius: 11 }} />
+              <div style={{ flex: 1 }}>
+                <Skeleton height={20} width="40%" style={{ marginBottom: 8 }} />
+                <Skeleton height={12} width="70%" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <SkeletonCard lines={4} />
+      </div>
+    );
+  }
 
   const attention = mergeAttentionItems(data);
-  const maxPhaseCount = Math.max(1, ...Object.values(data.schoolsByPhase));
+  const statusCounts = (schools ?? []).reduce<Record<string, number>>((acc, s) => {
+    acc[s.status] = (acc[s.status] ?? 0) + 1;
+    return acc;
+  }, {});
   const firstName = staffUser.get()?.name?.split(' ')[0];
 
   return (
@@ -121,23 +147,19 @@ export function DashboardPage() {
         </section>
       )}
 
-      <div className="section-title">Schools by Phase</div>
-      <section className="card">
-        <ul className="phase-breakdown">
-          {PHASE_ORDER.map((phase) => {
-            const count = data.schoolsByPhase[phase] ?? 0;
-            return (
-              <li key={phase}>
-                <span>{PHASE_LABELS[phase]}</span>
-                <div className="phase-breakdown-bar">
-                  <div className="phase-breakdown-bar-fill" style={{ width: `${(count / maxPhaseCount) * 100}%` }} />
-                </div>
-                <strong>{count}</strong>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      <div className="card-grid">
+        <section className="card">
+          <h2>Schools by Phase</h2>
+          <PhaseDistributionChart counts={data.schoolsByPhase} />
+        </section>
+
+        {schools && schools.length > 0 && (
+          <section className="card">
+            <h2>Schools by Status</h2>
+            <StatusDistributionChart counts={statusCounts} />
+          </section>
+        )}
+      </div>
 
       <div className="card-grid">
         <section className="card">
