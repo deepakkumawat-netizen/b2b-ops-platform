@@ -114,6 +114,17 @@ export const AgentKey = {
   // an AgentSuggestion with status AUTO_SENT for visibility.
   WORKSHOP_REMINDER: 'WORKSHOP_REMINDER',
   RENEWAL_CYCLE_OPENER: 'RENEWAL_CYCLE_OPENER',
+  // School-facing autonomous nag (SOP Phase 8's "follow up with the school
+  // if feedback has not been received") — sends an email, same as the two
+  // above.
+  WORKSHOP_FEEDBACK_NAG: 'WORKSHOP_FEEDBACK_NAG',
+  // Internal-only autonomous alerts — log an AUTO_SENT audit row visible in
+  // AI Suggestions → Activity, but never email anyone (no established
+  // staff-notification recipient policy yet).
+  STALE_PHASE_ALERT: 'STALE_PHASE_ALERT',
+  RENEWAL_STALLED_ALERT: 'RENEWAL_STALLED_ALERT',
+  COMPETITION_FOLLOWUP_ALERT: 'COMPETITION_FOLLOWUP_ALERT',
+  DATA_COMPLETENESS_ALERT: 'DATA_COMPLETENESS_ALERT',
 } as const;
 export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
 
@@ -122,6 +133,11 @@ export const SuggestionType = {
   RENEWAL_PITCH: 'RENEWAL_PITCH',
   WORKSHOP_REMINDER_SENT: 'WORKSHOP_REMINDER_SENT',
   RENEWAL_CYCLE_OPENED: 'RENEWAL_CYCLE_OPENED',
+  WORKSHOP_FEEDBACK_NAG_SENT: 'WORKSHOP_FEEDBACK_NAG_SENT',
+  STALE_PHASE_DETECTED: 'STALE_PHASE_DETECTED',
+  RENEWAL_STALLED: 'RENEWAL_STALLED',
+  COMPETITION_FOLLOWUP_NEEDED: 'COMPETITION_FOLLOWUP_NEEDED',
+  MISSING_HANDOVER_DATA: 'MISSING_HANDOVER_DATA',
 } as const;
 export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
 

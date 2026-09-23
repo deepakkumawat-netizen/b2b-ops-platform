@@ -330,8 +330,15 @@ export const api = {
   rejectAgentSuggestion: (id: string, token: string) =>
     request<AgentSuggestion>(`/agent-suggestions/${id}/reject`, { method: 'POST', token }),
   runAgentsNow: (token: string) =>
-    request<{ engagement: number; renewal: number; workshopReminder: number; renewalCycleOpener: number }>(
-      '/agent-suggestions/run',
-      { method: 'POST', token },
-    ),
+    request<{
+      engagement: number;
+      renewal: number;
+      workshopReminder: number;
+      renewalCycleOpener: number;
+      workshopFeedbackNag: number;
+      stalePhase: number;
+      renewalStalled: number;
+      competitionFollowup: number;
+      dataCompleteness: number;
+    }>('/agent-suggestions/run', { method: 'POST', token }),
 };

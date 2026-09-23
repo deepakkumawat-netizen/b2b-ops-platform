@@ -78,6 +78,23 @@ export class WorkshopsService {
     return updated;
   }
 
+  async nagFeedback(schoolId: string, workshopId: string) {
+    const workshop = await this.findOrThrow(schoolId, workshopId);
+    const updated = await this.prisma.workshop.update({
+      where: { id: workshop.id },
+      data: { feedbackNagSentAt: new Date() },
+    });
+    await this.notifyForWorkshop(
+      workshop.schoolId,
+      updated,
+      'workshop_feedback_nag',
+      'We\'d Still Love Your Feedback',
+      (school) =>
+        `Dear ${school.ownerName ?? 'Team'},\n\nWe haven't heard back yet on the feedback form for "${workshop.topic}" — it only takes a minute and helps us improve future sessions. Please share it when you get a chance.\n\nTeam CodeVidhya`,
+    );
+    return updated;
+  }
+
   async cancel(schoolId: string, workshopId: string, dto: CancelWorkshopDto) {
     const workshop = await this.findOrThrow(schoolId, workshopId);
     const updated = await this.prisma.workshop.update({

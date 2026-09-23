@@ -97,9 +97,12 @@ export function AgentSuggestionsPage() {
     setRunResult(null);
     try {
       const result = await api.runAgentsNow(token);
+      const alerts = result.stalePhase + result.renewalStalled + result.competitionFollowup + result.dataCompleteness;
       setRunResult(
         `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
-          `Auto-sent ${result.workshopReminder} workshop reminder(s) and opened ${result.renewalCycleOpener} renewal cycle(s) automatically.`,
+          `Auto-sent ${result.workshopReminder} workshop reminder(s), ${result.workshopFeedbackNag} feedback nag(s), ` +
+          `and opened ${result.renewalCycleOpener} renewal cycle(s) automatically. ` +
+          `Logged ${alerts} internal alert(s) (stale phase, stalled renewal, competition follow-up, missing data).`,
       );
       reload();
     } catch (err) {

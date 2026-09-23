@@ -77,6 +77,24 @@ export class AgentSuggestionsService {
     });
   }
 
+  /** Used by internal-alert agents (stale-phase, stalled-renewal,
+   * competition-followup, data-completeness) that have no single field to
+   * null-check for idempotency the way the school-facing auto-agents do —
+   * suppresses re-firing the same alert for the same school within
+   * `withinDays` of the last one. */
+  async hasRecentAutoAction(
+    schoolId: string,
+    agentKey: AgentKey,
+    suggestionType: SuggestionType,
+    withinDays: number,
+  ): Promise<boolean> {
+    const since = new Date(Date.now() - withinDays * 24 * 60 * 60 * 1000);
+    const existing = await this.prisma.agentSuggestion.findFirst({
+      where: { schoolId, agentKey, suggestionType, status: SuggestionStatus.AUTO_SENT, createdAt: { gte: since } },
+    });
+    return !!existing;
+  }
+
   async update(id: string, dto: UpdateAgentSuggestionDto, staff: StaffJwtPayload) {
     const suggestion = await this.findScoped(id, staff);
     return this.prisma.agentSuggestion.update({ where: { id: suggestion.id }, data: dto });

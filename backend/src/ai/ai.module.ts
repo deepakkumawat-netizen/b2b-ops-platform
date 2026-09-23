@@ -10,6 +10,11 @@ import { EngagementAgentService } from './agents/engagement-agent.service';
 import { RenewalAgentService } from './agents/renewal-agent.service';
 import { WorkshopReminderAgentService } from './agents/workshop-reminder-agent.service';
 import { RenewalCycleOpenerAgentService } from './agents/renewal-cycle-opener-agent.service';
+import { WorkshopFeedbackNagAgentService } from './agents/workshop-feedback-nag-agent.service';
+import { StalePhaseAgentService } from './agents/stale-phase-agent.service';
+import { RenewalStalledAgentService } from './agents/renewal-stalled-agent.service';
+import { CompetitionFollowupAgentService } from './agents/competition-followup-agent.service';
+import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
@@ -25,6 +30,11 @@ import { AgentSuggestionsController } from './agent-suggestions.controller';
     RenewalAgentService,
     WorkshopReminderAgentService,
     RenewalCycleOpenerAgentService,
+    WorkshopFeedbackNagAgentService,
+    StalePhaseAgentService,
+    RenewalStalledAgentService,
+    CompetitionFollowupAgentService,
+    DataCompletenessAgentService,
     AgentRunnerService,
     AgentSuggestionsService,
   ],
