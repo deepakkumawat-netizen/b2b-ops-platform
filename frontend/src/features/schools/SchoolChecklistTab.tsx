@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { PhaseTaskStatus } from '@b2b-ops/shared';
 import { api, SchoolPhaseTask } from '../../lib/api';
+import { EmptyState } from '../../components/EmptyState';
+import { InboxIcon } from '../../components/icons';
 
 export function SchoolChecklistTab({ schoolId, token }: { schoolId: string; token: string }) {
   const [tasks, setTasks] = useState<SchoolPhaseTask[]>([]);
@@ -68,7 +70,13 @@ export function SchoolChecklistTab({ schoolId, token }: { schoolId: string; toke
           </div>
         );
       })}
-      {tasks.length === 0 && <p className="muted">No checklist tasks found.</p>}
+      {tasks.length === 0 && (
+        <EmptyState
+          icon={<InboxIcon width={22} height={22} />}
+          title="No checklist tasks found"
+          text="Checklist tasks are generated automatically when a school is created."
+        />
+      )}
     </div>
   );
 }

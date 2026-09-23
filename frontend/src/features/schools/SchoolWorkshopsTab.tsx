@@ -3,6 +3,9 @@ import { WorkshopStatus } from '@b2b-ops/shared';
 import { api, Workshop } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { CalendarIcon } from '../../components/icons';
+import { Modal } from '../../components/Modal';
+
+type DialogState = { type: 'cancel' | 'feedback'; workshopId: string };
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   [WorkshopStatus.SCHEDULED]: 'badge badge-muted',
@@ -16,6 +19,8 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [form, setForm] = useState({ topic: '', targetGrades: '', scheduledAt: '' });
   const [error, setError] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [dialogText, setDialogText] = useState('');
 
   function reload() {
     api.listWorkshops(schoolId, token).then(setWorkshops).catch((err) => setError(err.message));
@@ -40,6 +45,24 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed');
+    }
+  }
+
+  function openDialog(type: DialogState['type'], workshopId: string) {
+    setDialog({ type, workshopId });
+    setDialogText('');
+  }
+
+  function confirmDialog() {
+    if (!dialog) return;
+    const text = dialogText.trim();
+    if (!text) return;
+    const { type, workshopId } = dialog;
+    setDialog(null);
+    if (type === 'cancel') {
+      run(() => api.cancelWorkshop(schoolId, workshopId, text, token));
+    } else {
+      run(() => api.recordWorkshopFeedback(schoolId, workshopId, text, token));
     }
   }
 
@@ -73,25 +96,12 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
                 </>
               )}
               {(w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CONFIRMED) && (
-                <button
-                  className="danger"
-                  onClick={() => {
-                    const reason = prompt('Cancellation reason?');
-                    if (reason) run(() => api.cancelWorkshop(schoolId, w.id, reason, token));
-                  }}
-                >
+                <button className="danger" onClick={() => openDialog('cancel', w.id)}>
                   Cancel
                 </button>
               )}
               {w.status === WorkshopStatus.COMPLETED && !w.feedbackReceivedAt && (
-                <button
-                  onClick={() => {
-                    const summary = prompt('Feedback summary?');
-                    if (summary) run(() => api.recordWorkshopFeedback(schoolId, w.id, summary, token));
-                  }}
-                >
-                  Record Feedback
-                </button>
+                <button onClick={() => openDialog('feedback', w.id)}>Record Feedback</button>
               )}
             </div>
             {w.feedbackSummary && <p className="small">Feedback: {w.feedbackSummary}</p>}
@@ -122,6 +132,21 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
         />
         <button type="submit">Schedule</button>
       </form>
+
+      {dialog && (
+        <Modal
+          title={dialog.type === 'cancel' ? 'Cancel workshop' : 'Record feedback'}
+          confirmLabel={dialog.type === 'cancel' ? 'Cancel workshop' : 'Save feedback'}
+          onConfirm={confirmDialog}
+          onCancel={() => setDialog(null)}
+          confirmDisabled={!dialogText.trim()}
+        >
+          <label>
+            {dialog.type === 'cancel' ? 'Cancellation reason' : 'Feedback summary'}
+            <textarea rows={3} value={dialogText} onChange={(e) => setDialogText(e.target.value)} autoFocus />
+          </label>
+        </Modal>
+      )}
     </div>
   );
 }

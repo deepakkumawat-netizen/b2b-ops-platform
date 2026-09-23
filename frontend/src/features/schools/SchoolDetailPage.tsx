@@ -9,6 +9,7 @@ import { SchoolEngagementTab } from './SchoolEngagementTab';
 import { SchoolCompetitionsTab } from './SchoolCompetitionsTab';
 import { SchoolRenewalsTab } from './SchoolRenewalsTab';
 import { PhaseProgress } from '../../components/PhaseProgress';
+import { Skeleton, SkeletonCard } from '../../components/Skeleton';
 
 const TABS = ['Checklist', 'Teachers', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal'] as const;
 type Tab = (typeof TABS)[number];
@@ -41,7 +42,19 @@ export function SchoolDetailPage() {
   }
 
   if (error) return <p className="error">{error}</p>;
-  if (!school || !id) return <p>Loading…</p>;
+  if (!school || !id) {
+    return (
+      <div className="page">
+        <div className="school-header">
+          <div style={{ width: '100%', maxWidth: 360 }}>
+            <Skeleton height={24} width="60%" style={{ marginBottom: 10 }} />
+            <Skeleton height={14} width="80%" />
+          </div>
+        </div>
+        <SkeletonCard lines={4} />
+      </div>
+    );
+  }
 
   return (
     <div className="page">

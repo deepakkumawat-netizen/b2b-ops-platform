@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SuggestionStatus } from '@b2b-ops/shared';
 import { AgentSuggestion, api, staffToken, staffUser } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { SparkleIcon } from '../../components/icons';
+import { SkeletonTableRows } from '../../components/Skeleton';
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   [SuggestionStatus.PENDING]: 'badge badge-warning',
@@ -25,16 +26,33 @@ export function AgentSuggestionsPage() {
   const token = staffToken.get()!;
   const isSuperAdmin = staffUser.get()?.role === 'SUPER_ADMIN';
   const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, { draftSubject: string; draftBody: string }>>({});
+  const [sortKey, setSortKey] = useState<'school' | 'agent' | 'type' | 'status'>('school');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   function reload() {
-    api.listAgentSuggestions(token).then(setSuggestions).catch((err) => setError(err.message));
+    setLoading(true);
+    api
+      .listAgentSuggestions(token)
+      .then(setSuggestions)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }
 
   useEffect(reload, []);
+
+  function toggleSort(key: typeof sortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
 
   function edited(s: AgentSuggestion) {
     return edits[s.id] ?? { draftSubject: s.draftSubject, draftBody: s.draftBody };
@@ -94,6 +112,24 @@ export function AgentSuggestionsPage() {
   const pending = suggestions.filter((s) => s.status === SuggestionStatus.PENDING);
   const decided = suggestions.filter((s) => s.status !== SuggestionStatus.PENDING);
 
+  const sortAccessor: Record<typeof sortKey, (s: AgentSuggestion) => string> = {
+    school: (s) => s.school.name.toLowerCase(),
+    agent: (s) => s.agentKey.toLowerCase(),
+    type: (s) => s.suggestionType,
+    status: (s) => s.status,
+  };
+  const sortedDecided = useMemo(() => {
+    const accessor = sortAccessor[sortKey];
+    return [...decided].sort((a, b) => {
+      const av = accessor(a);
+      const bv = accessor(b);
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decided, sortKey, sortDir]);
+
   return (
     <div className="page">
       <div className="school-header">
@@ -113,7 +149,7 @@ export function AgentSuggestionsPage() {
       {error && <p className="error">{error}</p>}
 
       <h2>Pending review</h2>
-      {pending.length === 0 && (
+      {!loading && pending.length === 0 && (
         <EmptyState
           icon={<SparkleIcon width={22} height={22} />}
           title="Nothing to review right now"
@@ -160,31 +196,45 @@ export function AgentSuggestionsPage() {
       <p className="muted small" style={{ marginTop: -4 }}>
         Everything the agents have drafted, sent, or done automatically.
       </p>
-      {decided.length === 0 && <p className="muted">Nothing yet.</p>}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>School</th>
-            <th>Agent</th>
-            <th>Type</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {decided.map((s) => (
-            <tr key={s.id}>
-              <td>
-                <Link to={`/schools/${s.schoolId}`}>{s.school.name}</Link>
-              </td>
-              <td>{s.agentKey}</td>
-              <td>{s.suggestionType.replace(/_/g, ' ')}</td>
-              <td>
-                <span className={STATUS_BADGE_CLASS[s.status]}>{STATUS_LABEL[s.status]}</span>
-              </td>
+      {!loading && decided.length === 0 && <p className="muted">Nothing yet.</p>}
+      {(loading || decided.length > 0) && (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="sortable" onClick={() => toggleSort('school')}>
+                School{sortKey === 'school' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('agent')}>
+                Agent{sortKey === 'agent' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('type')}>
+                Type{sortKey === 'type' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
+              <th className="sortable" onClick={() => toggleSort('status')}>
+                Status{sortKey === 'status' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading ? (
+              <SkeletonTableRows rows={4} columns={4} />
+            ) : (
+              sortedDecided.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <Link to={`/schools/${s.schoolId}`}>{s.school.name}</Link>
+                  </td>
+                  <td>{s.agentKey}</td>
+                  <td>{s.suggestionType.replace(/_/g, ' ')}</td>
+                  <td>
+                    <span className={STATUS_BADGE_CLASS[s.status]}>{STATUS_LABEL[s.status]}</span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

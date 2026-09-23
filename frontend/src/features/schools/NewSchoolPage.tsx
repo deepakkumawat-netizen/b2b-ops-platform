@@ -94,7 +94,7 @@ export function NewSchoolPage() {
         once this is saved.
       </p>
       <form className="form-grid" onSubmit={onSubmit}>
-        <div className="form-section-title">School</div>
+        <div className="form-section-title">Location</div>
         <label>
           School name
           <input value={form.name} onChange={(e) => set('name', e.target.value)} required />
@@ -167,7 +167,7 @@ export function NewSchoolPage() {
           )}
         </label>
 
-        <div className="form-section-title">Program &amp; commitments</div>
+        <div className="form-section-title">Product / Program</div>
         <label>
           Product / program
           <input value={form.productProgram} onChange={(e) => set('productProgram', e.target.value)} />
@@ -181,16 +181,18 @@ export function NewSchoolPage() {
           <input value={form.gradeTo} onChange={(e) => set('gradeTo', e.target.value)} />
         </label>
         <label>
-          Workshops committed
-          <input type="number" min={0} value={form.workshopsCommitted} onChange={(e) => set('workshopsCommitted', e.target.value)} />
-        </label>
-        <label>
           Training mode
           <select value={form.trainingMode} onChange={(e) => set('trainingMode', e.target.value as TrainingMode)}>
             <option value="">—</option>
             <option value={TrainingMode.ONLINE}>Online</option>
             <option value={TrainingMode.OFFLINE}>Offline</option>
           </select>
+        </label>
+
+        <div className="form-section-title">Commitments</div>
+        <label>
+          Workshops committed
+          <input type="number" min={0} value={form.workshopsCommitted} onChange={(e) => set('workshopsCommitted', e.target.value)} />
         </label>
         <label className="span-2">
           Special commitments
