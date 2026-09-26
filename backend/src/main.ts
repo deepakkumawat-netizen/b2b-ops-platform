@@ -1,10 +1,15 @@
 import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Render (like most hosts) sits behind a reverse proxy. Without this,
+  // req.ip is the proxy's address, so ThrottlerGuard's per-IP limits become
+  // one shared limit for the whole team, and req.secure is always false.
+  app.set('trust proxy', 1);
   app.use(helmet());
   const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
     .split(',')

@@ -6,6 +6,7 @@ import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { CancelWorkshopDto } from './dto/cancel-workshop.dto';
 import { RecordFeedbackDto } from './dto/record-feedback.dto';
+import { formatInZone } from '../common/time';
 
 // Mirrors the SOP Phase 8.3 communication flow exactly: Scheduled →
 // Confirmation → One-Day Reminder → Completion/Thank-You + Feedback Form →
@@ -43,7 +44,7 @@ export class WorkshopsService {
       data: { status: WorkshopStatus.CONFIRMED, confirmationSentAt: new Date() },
     });
     await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_confirmation', 'Workshop Confirmed', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nThis confirms the workshop "${workshop.topic}" scheduled for ${updated.scheduledAt.toLocaleString()}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nThis confirms the workshop "${workshop.topic}" scheduled for ${formatInZone(updated.scheduledAt)}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.\n\nTeam CodeVidhya`,
     );
     return updated;
   }
@@ -55,7 +56,7 @@ export class WorkshopsService {
       data: { reminderSentAt: new Date() },
     });
     await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_reminder', 'Workshop Reminder — Tomorrow', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nA reminder that the workshop "${workshop.topic}" is scheduled for ${updated.scheduledAt.toLocaleString()}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nA reminder that the workshop "${workshop.topic}" is scheduled for ${formatInZone(updated.scheduledAt)}.\n\nTeam CodeVidhya`,
     );
     return updated;
   }
@@ -102,7 +103,7 @@ export class WorkshopsService {
       data: { status: WorkshopStatus.CANCELLED, cancelReason: dto.cancelReason },
     });
     await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_cancellation', 'Workshop Cancelled', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${updated.scheduledAt.toLocaleString()} has been cancelled: ${dto.cancelReason}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${formatInZone(updated.scheduledAt)} has been cancelled: ${dto.cancelReason}.\n\nTeam CodeVidhya`,
     );
     return updated;
   }

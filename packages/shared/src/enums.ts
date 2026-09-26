@@ -45,6 +45,21 @@ export const SCHOOL_LIFECYCLE_PHASE_ORDER: SchoolLifecyclePhase[] = [
   SchoolLifecyclePhase.ANNUAL_RENEWAL,
 ];
 
+// Display names shared by the frontend and backend-written text (activity
+// history), so a phase is always called the same thing everywhere.
+export const SCHOOL_LIFECYCLE_PHASE_LABELS: Record<SchoolLifecyclePhase, string> = {
+  SALES_HANDOVER: 'Sales Handover',
+  WELCOME: 'Welcome',
+  ORIENTATION: 'Orientation',
+  ONBOARDING_SETUP: 'Onboarding Setup',
+  DATA_COLLECTION_LMS: 'Data Collection & LMS',
+  INFRA_DIAGNOSTIC: 'Infra Diagnostic',
+  TEACHER_TRAINING: 'Teacher Training',
+  ONGOING_ENGAGEMENT: 'Ongoing Engagement',
+  COMPETITIONS: 'Competitions',
+  ANNUAL_RENEWAL: 'Annual Renewal',
+};
+
 export const TrainingMode = {
   ONLINE: 'ONLINE',
   OFFLINE: 'OFFLINE',

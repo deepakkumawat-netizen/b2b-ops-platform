@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SuggestionStatus } from '@b2b-ops/shared';
-import { AgentSuggestion, api, staffToken, staffUser } from '../../lib/api';
+import { AgentSuggestion, api, staffSession } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { SparkleIcon } from '../../components/icons';
 import { SkeletonTableRows } from '../../components/Skeleton';
@@ -23,8 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function AgentSuggestionsPage() {
-  const token = staffToken.get()!;
-  const isSuperAdmin = staffUser.get()?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = staffSession.get()?.role === 'SUPER_ADMIN';
   const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +36,7 @@ export function AgentSuggestionsPage() {
   function reload() {
     setLoading(true);
     api
-      .listAgentSuggestions(token)
+      .listAgentSuggestions()
       .then(setSuggestions)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -66,7 +65,7 @@ export function AgentSuggestionsPage() {
     const change = edits[s.id];
     if (!change) return;
     try {
-      await api.updateAgentSuggestion(s.id, change, token);
+      await api.updateAgentSuggestion(s.id, change);
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save edit');
@@ -75,8 +74,8 @@ export function AgentSuggestionsPage() {
 
   async function approve(s: AgentSuggestion) {
     try {
-      if (edits[s.id]) await api.updateAgentSuggestion(s.id, edits[s.id], token);
-      await api.approveAgentSuggestion(s.id, token);
+      if (edits[s.id]) await api.updateAgentSuggestion(s.id, edits[s.id]);
+      await api.approveAgentSuggestion(s.id);
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not approve');
@@ -85,7 +84,7 @@ export function AgentSuggestionsPage() {
 
   async function reject(s: AgentSuggestion) {
     try {
-      await api.rejectAgentSuggestion(s.id, token);
+      await api.rejectAgentSuggestion(s.id);
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reject');
@@ -95,8 +94,9 @@ export function AgentSuggestionsPage() {
   async function runNow() {
     setRunning(true);
     setRunResult(null);
+    setError(null);
     try {
-      const result = await api.runAgentsNow(token);
+      const result = await api.runAgentsNow();
       const alerts = result.stalePhase + result.renewalStalled + result.competitionFollowup + result.dataCompleteness;
       setRunResult(
         `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
@@ -104,6 +104,10 @@ export function AgentSuggestionsPage() {
           `and opened ${result.renewalCycleOpener} renewal cycle(s) automatically. ` +
           `Logged ${alerts} internal alert(s) (stale phase, stalled renewal, competition follow-up, missing data).`,
       );
+      const failed = Object.entries(result.errors ?? {});
+      if (failed.length > 0) {
+        setError(`${failed.length} agent(s) failed and were skipped: ${failed.map(([name, msg]) => `${name} (${msg})`).join('; ')}`);
+      }
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not run agents');

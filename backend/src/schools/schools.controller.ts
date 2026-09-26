@@ -16,8 +16,8 @@ export class SchoolsController {
 
   @Post()
   @Roles(StaffRole.SALES) // SOP Phase 1: Sales owns the handover that creates a school
-  create(@Body() dto: CreateSchoolDto) {
-    return this.schools.create(dto);
+  create(@Body() dto: CreateSchoolDto, @CurrentStaff() staff: StaffJwtPayload) {
+    return this.schools.create(dto, staff);
   }
 
   @Get()

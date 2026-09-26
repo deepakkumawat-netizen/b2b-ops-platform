@@ -19,6 +19,9 @@ import { RenewalsModule } from './renewals/renewals.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
+import { ActivityModule } from './activity/activity.module';
+import { StaffModule } from './staff/staff.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -38,6 +41,7 @@ import { AiModule } from './ai/ai.module';
       exclude: ['/api/(.*)'],
     }),
     PrismaModule,
+    ActivityModule,
     AuthModule,
     SchoolsModule,
     PhaseTasksModule,
@@ -50,6 +54,8 @@ import { AiModule } from './ai/ai.module';
     DashboardModule,
     NotificationsModule,
     AiModule,
+    StaffModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

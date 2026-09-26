@@ -9,7 +9,7 @@ const TYPE_LABEL: Record<string, string> = {
   [EngagementType.WEEKLY_CALL]: 'Weekly Call',
 };
 
-export function SchoolEngagementTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolEngagementTab({ schoolId }: { schoolId: string }) {
   const [logs, setLogs] = useState<EngagementLog[]>([]);
   const [form, setForm] = useState<{ type: EngagementType; date: string; summary: string; issuesRaised: string }>({
     type: EngagementType.MONTHLY_VISIT,
@@ -20,7 +20,7 @@ export function SchoolEngagementTab({ schoolId, token }: { schoolId: string; tok
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    api.listEngagementLogs(schoolId, token).then(setLogs).catch((err) => setError(err.message));
+    api.listEngagementLogs(schoolId).then(setLogs).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -28,7 +28,7 @@ export function SchoolEngagementTab({ schoolId, token }: { schoolId: string; tok
   async function addLog(e: FormEvent) {
     e.preventDefault();
     try {
-      await api.createEngagementLog(schoolId, { ...form, date: new Date(form.date).toISOString() }, token);
+      await api.createEngagementLog(schoolId, { ...form, date: new Date(form.date).toISOString() });
       setForm({ type: EngagementType.MONTHLY_VISIT, date: '', summary: '', issuesRaised: '' });
       reload();
     } catch (err) {

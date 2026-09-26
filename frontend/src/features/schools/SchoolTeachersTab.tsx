@@ -3,13 +3,13 @@ import { api, Teacher } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { BuildingIcon } from '../../components/icons';
 
-export function SchoolTeachersTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolTeachersTab({ schoolId }: { schoolId: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', designation: '', gradeAssigned: '' });
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    api.listTeachers(schoolId, token).then(setTeachers).catch((err) => setError(err.message));
+    api.listTeachers(schoolId).then(setTeachers).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -17,7 +17,7 @@ export function SchoolTeachersTab({ schoolId, token }: { schoolId: string; token
   async function addTeacher(e: FormEvent) {
     e.preventDefault();
     try {
-      await api.createTeacher(schoolId, form, token);
+      await api.createTeacher(schoolId, form);
       setForm({ name: '', phone: '', designation: '', gradeAssigned: '' });
       reload();
     } catch (err) {
@@ -27,7 +27,7 @@ export function SchoolTeachersTab({ schoolId, token }: { schoolId: string; token
 
   async function toggleCredential(teacher: Teacher) {
     try {
-      await api.updateTeacher(schoolId, teacher.id, { lmsCredentialGenerated: !teacher.lmsCredentialGenerated }, token);
+      await api.updateTeacher(schoolId, teacher.id, { lmsCredentialGenerated: !teacher.lmsCredentialGenerated });
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update teacher');

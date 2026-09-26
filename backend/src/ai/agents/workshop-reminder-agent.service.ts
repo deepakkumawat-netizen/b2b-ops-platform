@@ -3,6 +3,7 @@ import { AgentKey, SuggestionType, WorkshopStatus } from '@b2b-ops/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkshopsService } from '../../workshops/workshops.service';
 import { AgentSuggestionsService } from '../agent-suggestions.service';
+import { formatInZone, startOfDayInZone } from '../../common/time';
 
 // Fully autonomous — no draft, no approval. The SOP's "One-Day Reminder"
 // step (Phase 8.3) is purely mechanical (a fixed reminder, no relationship
@@ -21,11 +22,10 @@ export class WorkshopReminderAgentService {
   ) {}
 
   async scan(): Promise<number> {
-    const tomorrowStart = new Date();
-    tomorrowStart.setHours(0, 0, 0, 0);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    const dayAfterStart = new Date(tomorrowStart);
-    dayAfterStart.setDate(dayAfterStart.getDate() + 1);
+    // "Tomorrow" in the business timezone, not the server's (UTC on Render).
+    const now = new Date();
+    const tomorrowStart = startOfDayInZone(now, 1);
+    const dayAfterStart = startOfDayInZone(now, 2);
 
     const dueWorkshops = await this.prisma.workshop.findMany({
       where: {
@@ -49,7 +49,7 @@ export class WorkshopReminderAgentService {
         agentKey: AgentKey.WORKSHOP_REMINDER,
         suggestionType: SuggestionType.WORKSHOP_REMINDER_SENT,
         subject: `Reminder auto-sent — ${workshop.topic}`,
-        body: `Automatically sent the day-before reminder for "${workshop.topic}" (scheduled ${workshop.scheduledAt.toLocaleString()}) to ${workshop.school.name}.`,
+        body: `Automatically sent the day-before reminder for "${workshop.topic}" (scheduled ${formatInZone(workshop.scheduledAt)}) to ${workshop.school.name}.`,
         reasoning: 'Workshop is confirmed and scheduled for tomorrow — the SOP requires a one-day reminder, which is purely mechanical.',
       });
       sent += 1;

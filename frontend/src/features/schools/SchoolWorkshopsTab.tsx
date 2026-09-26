@@ -15,7 +15,7 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   [WorkshopStatus.RESCHEDULED]: 'badge badge-warning',
 };
 
-export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [form, setForm] = useState({ topic: '', targetGrades: '', scheduledAt: '' });
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
   const [dialogText, setDialogText] = useState('');
 
   function reload() {
-    api.listWorkshops(schoolId, token).then(setWorkshops).catch((err) => setError(err.message));
+    api.listWorkshops(schoolId).then(setWorkshops).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -31,7 +31,7 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
   async function createWorkshop(e: FormEvent) {
     e.preventDefault();
     try {
-      await api.createWorkshop(schoolId, { ...form, scheduledAt: new Date(form.scheduledAt).toISOString() }, token);
+      await api.createWorkshop(schoolId, { ...form, scheduledAt: new Date(form.scheduledAt).toISOString() });
       setForm({ topic: '', targetGrades: '', scheduledAt: '' });
       reload();
     } catch (err) {
@@ -60,9 +60,9 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
     const { type, workshopId } = dialog;
     setDialog(null);
     if (type === 'cancel') {
-      run(() => api.cancelWorkshop(schoolId, workshopId, text, token));
+      run(() => api.cancelWorkshop(schoolId, workshopId, text));
     } else {
-      run(() => api.recordWorkshopFeedback(schoolId, workshopId, text, token));
+      run(() => api.recordWorkshopFeedback(schoolId, workshopId, text));
     }
   }
 
@@ -87,12 +87,12 @@ export function SchoolWorkshopsTab({ schoolId, token }: { schoolId: string; toke
             {w.cancelReason && <p className="error small">Cancelled: {w.cancelReason}</p>}
             <div className="button-row">
               {w.status === WorkshopStatus.SCHEDULED && (
-                <button onClick={() => run(() => api.confirmWorkshop(schoolId, w.id, token))}>Confirm</button>
+                <button onClick={() => run(() => api.confirmWorkshop(schoolId, w.id))}>Confirm</button>
               )}
               {w.status === WorkshopStatus.CONFIRMED && (
                 <>
-                  <button onClick={() => run(() => api.remindWorkshop(schoolId, w.id, token))}>Send Reminder</button>
-                  <button onClick={() => run(() => api.completeWorkshop(schoolId, w.id, token))}>Mark Completed</button>
+                  <button onClick={() => run(() => api.remindWorkshop(schoolId, w.id))}>Send Reminder</button>
+                  <button onClick={() => run(() => api.completeWorkshop(schoolId, w.id))}>Mark Completed</button>
                 </>
               )}
               {(w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CONFIRMED) && (

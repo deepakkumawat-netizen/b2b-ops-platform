@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, Dashboard, School, staffToken, staffUser } from '../../lib/api';
+import { api, Dashboard, School, staffSession } from '../../lib/api';
 import { AlertIcon, BuildingIcon, CalendarIcon, RefreshIcon, SparkleIcon } from '../../components/icons';
 import { EmptyState } from '../../components/EmptyState';
 import { Skeleton, SkeletonCard } from '../../components/Skeleton';
@@ -37,13 +37,11 @@ export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [schools, setSchools] = useState<School[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const token = staffToken.get();
 
   useEffect(() => {
-    if (!token) return;
-    api.getDashboard(token).then(setData).catch((err) => setError(err.message));
-    api.listSchools(token).then(setSchools).catch(() => setSchools([]));
-  }, [token]);
+    api.getDashboard().then(setData).catch((err) => setError(err.message));
+    api.listSchools().then(setSchools).catch(() => setSchools([]));
+  }, []);
 
   if (error) return <p className="error">{error}</p>;
   if (!data) {
@@ -72,7 +70,7 @@ export function DashboardPage() {
     acc[s.status] = (acc[s.status] ?? 0) + 1;
     return acc;
   }, {});
-  const firstName = staffUser.get()?.name?.split(' ')[0];
+  const firstName = staffSession.get()?.name?.split(' ')[0];
 
   return (
     <div className="page">

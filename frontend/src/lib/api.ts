@@ -14,21 +14,54 @@ import {
   WorkshopStatus,
 } from '@b2b-ops/shared';
 
-// Tiny pub-sub so React re-renders on login/logout without a full page
-// reload — a plain localStorage.getItem read in JSX only runs once at
-// mount, useSyncExternalStore is what makes RequireAuth notice a token
-// appearing/disappearing.
-function createTokenStore(storageKey: string) {
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const STAFF_USER_KEY = 'b2bops_staff_user';
+// Pre-cookie builds kept the JWT itself here — clear it so it doesn't linger.
+const LEGACY_TOKEN_KEY = 'b2bops_staff_token';
+
+export type StaffUser = { id: string; email: string; name: string; role: StaffRole };
+
+// The session itself is an httpOnly cookie the browser sends automatically —
+// page JavaScript can never read it (that's the point: an XSS bug can't
+// steal it). What's kept here is only the signed-in user's public profile,
+// so the UI knows who's signed in and can re-render on login/logout; it
+// grants no access by itself. useSyncExternalStore is what makes
+// RequireAuth notice it appearing/disappearing.
+function createSessionStore() {
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((l) => l());
+  let cachedRaw: string | null | undefined;
+  let cachedUser: StaffUser | null = null;
+  const read = (): string | null => {
+    try {
+      return localStorage.getItem(STAFF_USER_KEY);
+    } catch {
+      return null;
+    }
+  };
   return {
-    get: () => localStorage.getItem(storageKey),
-    set: (t: string) => {
-      localStorage.setItem(storageKey, t);
+    // Returns the same object while the stored JSON is unchanged, as
+    // useSyncExternalStore requires.
+    get: (): StaffUser | null => {
+      const raw = read();
+      if (raw !== cachedRaw) {
+        cachedRaw = raw;
+        try {
+          cachedUser = raw ? (JSON.parse(raw) as StaffUser) : null;
+        } catch {
+          cachedUser = null;
+        }
+      }
+      return cachedUser;
+    },
+    set: (u: StaffUser) => {
+      localStorage.setItem(STAFF_USER_KEY, JSON.stringify(u));
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
       notify();
     },
     clear: () => {
-      localStorage.removeItem(storageKey);
+      localStorage.removeItem(STAFF_USER_KEY);
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
       notify();
     },
     subscribe: (onChange: () => void) => {
@@ -38,42 +71,29 @@ function createTokenStore(storageKey: string) {
   };
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
-const STAFF_TOKEN_KEY = 'b2bops_staff_token';
-const STAFF_USER_KEY = 'b2bops_staff_user';
-
-export const staffToken = createTokenStore(STAFF_TOKEN_KEY);
-export function useStaffToken() {
-  return useSyncExternalStore(staffToken.subscribe, staffToken.get);
+export const staffSession = createSessionStore();
+export function useStaffUser() {
+  return useSyncExternalStore(staffSession.subscribe, staffSession.get);
 }
 
-export type StaffUser = { id: string; email: string; name: string; role: StaffRole };
-export const staffUser = {
-  get: (): StaffUser | null => {
-    const raw = localStorage.getItem(STAFF_USER_KEY);
-    return raw ? (JSON.parse(raw) as StaffUser) : null;
-  },
-  set: (u: StaffUser) => localStorage.setItem(STAFF_USER_KEY, JSON.stringify(u)),
-  clear: () => localStorage.removeItem(STAFF_USER_KEY),
-};
-
-async function request<T>(path: string, opts: RequestInit & { token?: string | null } = {}): Promise<T> {
-  const { token, headers, ...rest } = opts;
+async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const { headers, ...rest } = opts;
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
+    // Sends the httpOnly session cookie. 'include' rather than 'same-origin'
+    // so a VITE_API_BASE_URL pointing at another origin still works.
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    if (res.status === 401 && token) {
+    if (res.status === 401 && staffSession.get() && !path.startsWith('/auth/')) {
       // Stale/expired/invalidated session — drop it so RequireAuth redirects
       // to /login instead of leaving every page stuck showing "Unauthorized".
-      staffToken.clear();
-      staffUser.clear();
+      staffSession.clear();
       throw new Error('Your session has expired. Please sign in again.');
     }
     throw new Error(body.message || `Request failed: ${res.status}`);
@@ -218,127 +238,154 @@ export type AgentSuggestion = {
   createdAt: string;
 };
 
+export type StaffMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: StaffRole;
+  isActive: boolean;
+  approvedAt: string | null;
+  createdAt: string;
+};
+
+export type ActivityEntry = {
+  id: string;
+  at: string;
+  kind: 'ACTION' | 'EMAIL' | 'AGENT' | 'ENGAGEMENT';
+  title: string;
+  detail: string | null;
+  actor: string | null;
+};
+
+export type RenewalReportRow = RenewalCycle & {
+  createdAt: string;
+  school: { id: string; name: string; city: string | null; state: string | null; assignedAccountManager: { name: string } | null };
+};
+
+export type AgentName =
+  | 'engagement'
+  | 'renewal'
+  | 'workshopReminder'
+  | 'renewalCycleOpener'
+  | 'workshopFeedbackNag'
+  | 'stalePhase'
+  | 'renewalStalled'
+  | 'competitionFollowup'
+  | 'dataCompleteness';
+export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
+
 export const api = {
   staffLogin: (email: string, password: string) =>
-    request<{ accessToken: string; staff: StaffUser }>('/auth/staff/login', {
+    request<{ staff: StaffUser }>('/auth/staff/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
   staffSignup: (dto: { name: string; email: string; password: string; role: StaffRole }) =>
-    request<{ accessToken: string; staff: StaffUser }>('/auth/staff/signup', {
+    request<{ pending: true; staff: StaffUser }>('/auth/staff/signup', {
       method: 'POST',
       body: JSON.stringify(dto),
     }),
+  staffLogout: () => request<{ success: boolean }>('/auth/staff/logout', { method: 'POST' }),
 
-  listSchools: (token: string) => request<School[]>('/schools', { token }),
-  getSchool: (id: string, token: string) => request<School>(`/schools/${id}`, { token }),
-  createSchool: (dto: Partial<School>, token: string) =>
-    request<School>('/schools', { method: 'POST', body: JSON.stringify(dto), token }),
-  updateSchool: (id: string, dto: Partial<School>, token: string) =>
-    request<School>(`/schools/${id}`, { method: 'PATCH', body: JSON.stringify(dto), token }),
-  advanceSchoolPhase: (id: string, token: string) =>
-    request<{ school: School; warning: string | null }>(`/schools/${id}/advance-phase`, { method: 'POST', token }),
+  listStaff: () => request<StaffMember[]>('/staff'),
+  updateStaff: (id: string, dto: { role?: StaffRole; isActive?: boolean }) =>
+    request<StaffMember>(`/staff/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }),
+  rejectPendingStaff: (id: string) => request<{ success: boolean }>(`/staff/${id}`, { method: 'DELETE' }),
 
-  listPhaseTasks: (schoolId: string, token: string) =>
-    request<SchoolPhaseTask[]>(`/schools/${schoolId}/phase-tasks`, { token }),
-  updatePhaseTask: (schoolId: string, taskId: string, dto: { status: PhaseTaskStatus; notes?: string }, token: string) =>
+  listSchoolActivity: (schoolId: string) => request<ActivityEntry[]>(`/schools/${schoolId}/activity`),
+  getRenewalsReport: () => request<RenewalReportRow[]>('/reports/renewals'),
+
+  listSchools: () => request<School[]>('/schools'),
+  getSchool: (id: string) => request<School>(`/schools/${id}`),
+  createSchool: (dto: Partial<School>) =>
+    request<School>('/schools', { method: 'POST', body: JSON.stringify(dto) }),
+  updateSchool: (id: string, dto: Partial<School>) =>
+    request<School>(`/schools/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }),
+  advanceSchoolPhase: (id: string) =>
+    request<{ school: School; warning: string | null }>(`/schools/${id}/advance-phase`, { method: 'POST' }),
+
+  listPhaseTasks: (schoolId: string) =>
+    request<SchoolPhaseTask[]>(`/schools/${schoolId}/phase-tasks`),
+  updatePhaseTask: (schoolId: string, taskId: string, dto: { status: PhaseTaskStatus; notes?: string }) =>
     request<SchoolPhaseTask>(`/schools/${schoolId}/phase-tasks/${taskId}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
-      token,
     }),
 
-  listTeachers: (schoolId: string, token: string) => request<Teacher[]>(`/schools/${schoolId}/teachers`, { token }),
-  createTeacher: (schoolId: string, dto: Partial<Teacher>, token: string) =>
-    request<Teacher>(`/schools/${schoolId}/teachers`, { method: 'POST', body: JSON.stringify(dto), token }),
-  updateTeacher: (schoolId: string, teacherId: string, dto: Partial<Teacher>, token: string) =>
+  listTeachers: (schoolId: string) => request<Teacher[]>(`/schools/${schoolId}/teachers`),
+  createTeacher: (schoolId: string, dto: Partial<Teacher>) =>
+    request<Teacher>(`/schools/${schoolId}/teachers`, { method: 'POST', body: JSON.stringify(dto) }),
+  updateTeacher: (schoolId: string, teacherId: string, dto: Partial<Teacher>) =>
     request<Teacher>(`/schools/${schoolId}/teachers/${teacherId}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
-      token,
     }),
-  deleteTeacher: (schoolId: string, teacherId: string, token: string) =>
-    request<{ success: boolean }>(`/schools/${schoolId}/teachers/${teacherId}`, { method: 'DELETE', token }),
+  deleteTeacher: (schoolId: string, teacherId: string) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/teachers/${teacherId}`, { method: 'DELETE' }),
 
-  getInfraDiagnostic: (schoolId: string, token: string) =>
-    request<InfraDiagnostic>(`/schools/${schoolId}/infra-diagnostic`, { token }),
-  upsertInfraDiagnostic: (schoolId: string, dto: NonNullable<InfraDiagnostic>, token: string) =>
+  getInfraDiagnostic: (schoolId: string) =>
+    request<InfraDiagnostic>(`/schools/${schoolId}/infra-diagnostic`),
+  upsertInfraDiagnostic: (schoolId: string, dto: NonNullable<InfraDiagnostic>) =>
     request<InfraDiagnostic>(`/schools/${schoolId}/infra-diagnostic`, {
       method: 'PUT',
       body: JSON.stringify(dto),
-      token,
     }),
 
-  listWorkshops: (schoolId: string, token: string) => request<Workshop[]>(`/schools/${schoolId}/workshops`, { token }),
-  createWorkshop: (schoolId: string, dto: { topic: string; targetGrades?: string; scheduledAt: string }, token: string) =>
-    request<Workshop>(`/schools/${schoolId}/workshops`, { method: 'POST', body: JSON.stringify(dto), token }),
-  confirmWorkshop: (schoolId: string, workshopId: string, token: string) =>
-    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/confirm`, { method: 'POST', token }),
-  remindWorkshop: (schoolId: string, workshopId: string, token: string) =>
-    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/remind`, { method: 'POST', token }),
-  completeWorkshop: (schoolId: string, workshopId: string, token: string) =>
-    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/complete`, { method: 'POST', token }),
-  cancelWorkshop: (schoolId: string, workshopId: string, cancelReason: string, token: string) =>
+  listWorkshops: (schoolId: string) => request<Workshop[]>(`/schools/${schoolId}/workshops`),
+  createWorkshop: (schoolId: string, dto: { topic: string; targetGrades?: string; scheduledAt: string }) =>
+    request<Workshop>(`/schools/${schoolId}/workshops`, { method: 'POST', body: JSON.stringify(dto) }),
+  confirmWorkshop: (schoolId: string, workshopId: string) =>
+    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/confirm`, { method: 'POST' }),
+  remindWorkshop: (schoolId: string, workshopId: string) =>
+    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/remind`, { method: 'POST' }),
+  completeWorkshop: (schoolId: string, workshopId: string) =>
+    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/complete`, { method: 'POST' }),
+  cancelWorkshop: (schoolId: string, workshopId: string, cancelReason: string) =>
     request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/cancel`, {
       method: 'POST',
       body: JSON.stringify({ cancelReason }),
-      token,
     }),
-  recordWorkshopFeedback: (schoolId: string, workshopId: string, feedbackSummary: string, token: string) =>
+  recordWorkshopFeedback: (schoolId: string, workshopId: string, feedbackSummary: string) =>
     request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/feedback`, {
       method: 'PATCH',
       body: JSON.stringify({ feedbackSummary }),
-      token,
     }),
 
-  listEngagementLogs: (schoolId: string, token: string) =>
-    request<EngagementLog[]>(`/schools/${schoolId}/engagement-logs`, { token }),
+  listEngagementLogs: (schoolId: string) =>
+    request<EngagementLog[]>(`/schools/${schoolId}/engagement-logs`),
   createEngagementLog: (
     schoolId: string,
     dto: { type: EngagementType; date: string; summary?: string; issuesRaised?: string },
-    token: string,
-  ) => request<EngagementLog>(`/schools/${schoolId}/engagement-logs`, { method: 'POST', body: JSON.stringify(dto), token }),
+  ) => request<EngagementLog>(`/schools/${schoolId}/engagement-logs`, { method: 'POST', body: JSON.stringify(dto) }),
 
-  listCompetitions: (schoolId: string, token: string) =>
-    request<CompetitionParticipation[]>(`/schools/${schoolId}/competitions`, { token }),
-  createCompetition: (schoolId: string, dto: Partial<CompetitionParticipation>, token: string) =>
+  listCompetitions: (schoolId: string) =>
+    request<CompetitionParticipation[]>(`/schools/${schoolId}/competitions`),
+  createCompetition: (schoolId: string, dto: Partial<CompetitionParticipation>) =>
     request<CompetitionParticipation>(`/schools/${schoolId}/competitions`, {
       method: 'POST',
       body: JSON.stringify(dto),
-      token,
     }),
 
-  listRenewals: (schoolId: string, token: string) => request<RenewalCycle[]>(`/schools/${schoolId}/renewals`, { token }),
-  createRenewal: (schoolId: string, cycleLabel: string, token: string) =>
-    request<RenewalCycle>(`/schools/${schoolId}/renewals`, { method: 'POST', body: JSON.stringify({ cycleLabel }), token }),
-  updateRenewal: (schoolId: string, cycleId: string, dto: Partial<RenewalCycle>, token: string) =>
+  listRenewals: (schoolId: string) => request<RenewalCycle[]>(`/schools/${schoolId}/renewals`),
+  createRenewal: (schoolId: string, cycleLabel: string) =>
+    request<RenewalCycle>(`/schools/${schoolId}/renewals`, { method: 'POST', body: JSON.stringify({ cycleLabel }) }),
+  updateRenewal: (schoolId: string, cycleId: string, dto: Partial<RenewalCycle>) =>
     request<RenewalCycle>(`/schools/${schoolId}/renewals/${cycleId}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
-      token,
     }),
-  getRenewalYearSummary: (schoolId: string, token: string) =>
-    request<YearSummary>(`/schools/${schoolId}/renewals/year-summary`, { token }),
+  getRenewalYearSummary: (schoolId: string) =>
+    request<YearSummary>(`/schools/${schoolId}/renewals/year-summary`),
 
-  getDashboard: (token: string) => request<Dashboard>('/dashboard', { token }),
+  getDashboard: () => request<Dashboard>('/dashboard'),
 
-  listAgentSuggestions: (token: string) => request<AgentSuggestion[]>('/agent-suggestions', { token }),
-  updateAgentSuggestion: (id: string, dto: { draftSubject?: string; draftBody?: string }, token: string) =>
-    request<AgentSuggestion>(`/agent-suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(dto), token }),
-  approveAgentSuggestion: (id: string, token: string) =>
-    request<AgentSuggestion>(`/agent-suggestions/${id}/approve`, { method: 'POST', token }),
-  rejectAgentSuggestion: (id: string, token: string) =>
-    request<AgentSuggestion>(`/agent-suggestions/${id}/reject`, { method: 'POST', token }),
-  runAgentsNow: (token: string) =>
-    request<{
-      engagement: number;
-      renewal: number;
-      workshopReminder: number;
-      renewalCycleOpener: number;
-      workshopFeedbackNag: number;
-      stalePhase: number;
-      renewalStalled: number;
-      competitionFollowup: number;
-      dataCompleteness: number;
-    }>('/agent-suggestions/run', { method: 'POST', token }),
+  listAgentSuggestions: () => request<AgentSuggestion[]>('/agent-suggestions'),
+  updateAgentSuggestion: (id: string, dto: { draftSubject?: string; draftBody?: string }) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }),
+  approveAgentSuggestion: (id: string) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}/approve`, { method: 'POST' }),
+  rejectAgentSuggestion: (id: string) =>
+    request<AgentSuggestion>(`/agent-suggestions/${id}/reject`, { method: 'POST' }),
+  runAgentsNow: () =>
+    request<AgentRunResult>('/agent-suggestions/run', { method: 'POST' }),
 };

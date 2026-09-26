@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { staffToken, staffUser } from '../lib/api';
-import { BuildingIcon, GridIcon, PlusIcon, SparkleIcon } from '../components/icons';
+import { api, staffSession, useStaffUser } from '../lib/api';
+import { BuildingIcon, GridIcon, PlusIcon, SparkleIcon, UsersIcon } from '../components/icons';
 
 function initials(name: string | undefined): string {
   if (!name) return '?';
@@ -10,11 +10,12 @@ function initials(name: string | undefined): string {
 
 export function StaffLayout() {
   const navigate = useNavigate();
-  const me = staffUser.get();
+  const me = useStaffUser();
 
-  function signOut() {
-    staffToken.clear();
-    staffUser.clear();
+  async function signOut() {
+    // Clear the httpOnly cookie server-side; sign out locally regardless.
+    await api.staffLogout().catch(() => undefined);
+    staffSession.clear();
     navigate('/login');
   }
 
@@ -35,6 +36,11 @@ export function StaffLayout() {
           {(me?.role === 'SALES' || me?.role === 'SUPER_ADMIN') && (
             <NavLink to="/schools/new" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
               <PlusIcon /> New School
+            </NavLink>
+          )}
+          {me?.role === 'SUPER_ADMIN' && (
+            <NavLink to="/staff" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
+              <UsersIcon /> Staff
             </NavLink>
           )}
         </nav>

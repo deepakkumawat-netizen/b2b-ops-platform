@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { UpdatePhaseTaskDto } from './dto/update-phase-task.dto';
+import { ActivityService } from '../activity/activity.service';
 
 // The one checklist task whose completion triggers the SOP's Phase-2
 // "Welcome Email" touchpoint (SOP Step 2.2) — see updateStatus() below.
@@ -14,6 +15,7 @@ export class PhaseTasksService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private activity: ActivityService,
   ) {}
 
   /** Creates one SchoolPhaseTask per seeded PhaseTaskTemplate for a newly
@@ -54,6 +56,10 @@ export class PhaseTasksService {
       },
       include: { template: true },
     });
+    if (dto.status !== task.status) {
+      const verb = dto.status === PhaseTaskStatus.DONE ? 'Completed' : dto.status === PhaseTaskStatus.NA ? 'Marked N/A' : 'Reopened';
+      await this.activity.record(schoolId, staff, `${verb}: ${task.template.label}`, dto.notes ?? null);
+    }
 
     if (task.template.key === WELCOME_EMAIL_TASK_KEY && dto.status === PhaseTaskStatus.DONE) {
       await this.notifications.sendTemplateEmail({

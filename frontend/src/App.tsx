@@ -13,6 +13,7 @@ const SchoolsListPage = lazy(() => import('./features/schools/SchoolsListPage').
 // who never adds a school (most visits) never downloads it.
 const NewSchoolPage = lazy(() => import('./features/schools/NewSchoolPage').then((m) => ({ default: m.NewSchoolPage })));
 const SchoolDetailPage = lazy(() => import('./features/schools/SchoolDetailPage').then((m) => ({ default: m.SchoolDetailPage })));
+const StaffPage = lazy(() => import('./features/staff/StaffPage').then((m) => ({ default: m.StaffPage })));
 const AgentSuggestionsPage = lazy(() =>
   import('./features/agent-suggestions/AgentSuggestionsPage').then((m) => ({ default: m.AgentSuggestionsPage })),
 );
@@ -35,6 +36,7 @@ export function App() {
             <Route path="/schools/new" element={<NewSchoolPage />} />
             <Route path="/schools/:id" element={<SchoolDetailPage />} />
             <Route path="/agent-suggestions" element={<AgentSuggestionsPage />} />
+            <Route path="/staff" element={<StaffPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useStaffToken } from '../lib/api';
+import { useStaffUser } from '../lib/api';
 
 export function RequireAuth() {
-  const token = useStaffToken();
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+  const me = useStaffUser();
+  return me ? <Outlet /> : <Navigate to="/login" replace />;
 }

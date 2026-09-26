@@ -1,0 +1,24 @@
+# Type-checks, tests and builds everything on every push and pull request,
+# so a broken build is caught before Render tries to deploy it.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace packages/shared
+      - run: npx prisma generate --schema=backend/prisma/schema.prisma
+      - run: npm run test:backend -- --ci
+      - run: npm run build --workspace backend
+      - run: npm run build --workspace frontend

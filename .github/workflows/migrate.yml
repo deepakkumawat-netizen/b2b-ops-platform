@@ -1,0 +1,40 @@
+# Applies pending Prisma migrations to the production (Neon) database
+# whenever a new migration lands on master. Render's build step can't reach
+# Neon's migration engine (see render.yaml), but GitHub's runners can.
+#
+# One-time setup: repo Settings → Secrets and variables → Actions → add
+# DATABASE_URL (the same Neon connection string Render uses).
+name: Migrate database
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - backend/prisma/migrations/**
+      - backend/prisma/schema.prisma
+  workflow_dispatch:
+
+concurrency:
+  group: prisma-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check DATABASE_URL secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Add a DATABASE_URL repository secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+      - name: prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx --yes prisma@5.22.0 migrate deploy --schema=backend/prisma/schema.prisma

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SchoolLifecyclePhase, SchoolStatus } from '@b2b-ops/shared';
-import { api, School, staffToken, staffUser } from '../../lib/api';
+import { api, School, staffSession } from '../../lib/api';
 import { PhaseProgress } from '../../components/PhaseProgress';
 import { EmptyState } from '../../components/EmptyState';
-import { BuildingIcon } from '../../components/icons';
+import { BuildingIcon, DownloadIcon } from '../../components/icons';
 import { SkeletonTableRows } from '../../components/Skeleton';
 import { PHASE_LABELS, PHASE_ORDER } from '../../lib/phases';
+import { dateStamp, downloadCsv, formatDate } from '../../lib/csv';
 
 const STATUS_BADGE_CLASS: Record<SchoolStatus, string> = {
   ACTIVE: 'badge badge-success',
@@ -41,18 +42,17 @@ export function SchoolsListPage() {
   const [statusFilter, setStatusFilter] = useState<SchoolStatus | 'ALL'>('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const token = staffToken.get();
-  const canAddSchool = staffUser.get()?.role === 'SALES' || staffUser.get()?.role === 'SUPER_ADMIN';
+  const [exportingRenewals, setExportingRenewals] = useState(false);
+  const canAddSchool = staffSession.get()?.role === 'SALES' || staffSession.get()?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
-    if (!token) return;
     setLoading(true);
     api
-      .listSchools(token)
+      .listSchools()
       .then(setSchools)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -83,6 +83,58 @@ export function SchoolsListPage() {
       return 0;
     });
   }, [filtered, sortKey, sortDir]);
+
+  function exportSchools() {
+    downloadCsv(
+      `schools-${dateStamp()}.csv`,
+      ['Name', 'City', 'State', 'Country', 'Phase', 'Status', 'Account Manager', 'Sales Rep', 'Program', 'Grades', 'Students', 'Workshops Committed', 'Training Mode', 'Owner', 'Owner Email', 'Owner Phone', 'Created'],
+      sorted.map((s) => [
+        s.name,
+        s.city,
+        s.state,
+        s.country,
+        PHASE_LABELS[s.currentPhase],
+        s.status,
+        s.assignedAccountManager?.name,
+        s.assignedSalesRep?.name,
+        s.productProgram,
+        s.gradeFrom || s.gradeTo ? `${s.gradeFrom ?? ''}–${s.gradeTo ?? ''}` : '',
+        s.totalStudents,
+        s.workshopsCommitted,
+        s.trainingMode,
+        s.ownerName,
+        s.ownerEmail,
+        s.ownerPhone,
+        formatDate(s.createdAt),
+      ]),
+    );
+  }
+
+  async function exportRenewals() {
+    setExportingRenewals(true);
+    try {
+      const rows = await api.getRenewalsReport();
+      downloadCsv(
+        `renewals-${dateStamp()}.csv`,
+        ['School', 'City', 'State', 'Account Manager', 'Cycle', 'Status', 'Feedback Call', 'Feedback Summary', 'Agreement Signed'],
+        rows.map((r) => [
+          r.school.name,
+          r.school.city,
+          r.school.state,
+          r.school.assignedAccountManager?.name,
+          r.cycleLabel,
+          r.renewalStatus,
+          formatDate(r.feedbackCallDate),
+          r.feedbackSummary,
+          formatDate(r.agreementSignedAt),
+        ]),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not export renewals');
+    } finally {
+      setExportingRenewals(false);
+    }
+  }
 
   const filtersActive = search.trim() !== '' || phaseFilter !== 'ALL' || statusFilter !== 'ALL';
 
@@ -166,9 +218,19 @@ export function SchoolsListPage() {
             />
           ) : (
             <>
-              <p className="muted small">
-                {filtered.length} of {schools.length} school{schools.length === 1 ? '' : 's'}
-              </p>
+              <div className="list-toolbar">
+                <p className="muted small">
+                  {filtered.length} of {schools.length} school{schools.length === 1 ? '' : 's'}
+                </p>
+                <div className="button-row">
+                  <button type="button" className="secondary" onClick={exportSchools} title="Exports the schools currently shown, with filters applied">
+                    <DownloadIcon /> Export schools
+                  </button>
+                  <button type="button" className="secondary" onClick={exportRenewals} disabled={exportingRenewals}>
+                    <DownloadIcon /> {exportingRenewals ? 'Exporting…' : 'Export renewals'}
+                  </button>
+                </div>
+              </div>
               <table className="data-table">
                 <thead>
                   <tr>

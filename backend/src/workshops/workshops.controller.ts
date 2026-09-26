@@ -9,6 +9,7 @@ import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { CancelWorkshopDto } from './dto/cancel-workshop.dto';
 import { RecordFeedbackDto } from './dto/record-feedback.dto';
+import { ActivityService } from '../activity/activity.service';
 
 @Controller('schools/:schoolId/workshops')
 @UseGuards(StaffAuthGuard)
@@ -16,6 +17,7 @@ export class WorkshopsController {
   constructor(
     private workshops: WorkshopsService,
     private prisma: PrismaService,
+    private activity: ActivityService,
   ) {}
 
   @Get()
@@ -27,7 +29,9 @@ export class WorkshopsController {
   @Post()
   async create(@Param('schoolId') schoolId: string, @Body() dto: CreateWorkshopDto, @CurrentStaff() staff: StaffJwtPayload) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.create(schoolId, dto);
+    const w = await this.workshops.create(schoolId, dto);
+    await this.activity.record(schoolId, staff, `Workshop scheduled: ${w.topic}`);
+    return w;
   }
 
   @Patch(':workshopId')
@@ -38,25 +42,33 @@ export class WorkshopsController {
     @CurrentStaff() staff: StaffJwtPayload,
   ) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.update(schoolId, workshopId, dto);
+    const w = await this.workshops.update(schoolId, workshopId, dto);
+    await this.activity.record(schoolId, staff, `Workshop updated: ${w.topic}`);
+    return w;
   }
 
   @Post(':workshopId/confirm')
   async confirm(@Param('schoolId') schoolId: string, @Param('workshopId') workshopId: string, @CurrentStaff() staff: StaffJwtPayload) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.confirm(schoolId, workshopId);
+    const w = await this.workshops.confirm(schoolId, workshopId);
+    await this.activity.record(schoolId, staff, `Workshop confirmed: ${w.topic}`);
+    return w;
   }
 
   @Post(':workshopId/remind')
   async remind(@Param('schoolId') schoolId: string, @Param('workshopId') workshopId: string, @CurrentStaff() staff: StaffJwtPayload) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.remind(schoolId, workshopId);
+    const w = await this.workshops.remind(schoolId, workshopId);
+    await this.activity.record(schoolId, staff, `Workshop reminder sent: ${w.topic}`);
+    return w;
   }
 
   @Post(':workshopId/complete')
   async complete(@Param('schoolId') schoolId: string, @Param('workshopId') workshopId: string, @CurrentStaff() staff: StaffJwtPayload) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.complete(schoolId, workshopId);
+    const w = await this.workshops.complete(schoolId, workshopId);
+    await this.activity.record(schoolId, staff, `Workshop completed: ${w.topic}`);
+    return w;
   }
 
   @Post(':workshopId/cancel')
@@ -67,7 +79,9 @@ export class WorkshopsController {
     @CurrentStaff() staff: StaffJwtPayload,
   ) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.cancel(schoolId, workshopId, dto);
+    const w = await this.workshops.cancel(schoolId, workshopId, dto);
+    await this.activity.record(schoolId, staff, `Workshop cancelled: ${w.topic}`, dto.cancelReason);
+    return w;
   }
 
   @Patch(':workshopId/feedback')
@@ -78,6 +92,8 @@ export class WorkshopsController {
     @CurrentStaff() staff: StaffJwtPayload,
   ) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.workshops.recordFeedback(schoolId, workshopId, dto);
+    const w = await this.workshops.recordFeedback(schoolId, workshopId, dto);
+    await this.activity.record(schoolId, staff, `Workshop feedback recorded: ${w.topic}`);
+    return w;
   }
 }

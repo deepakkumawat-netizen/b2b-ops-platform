@@ -5,7 +5,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import flags from 'react-phone-number-input/flags';
 import 'react-phone-number-input/style.css';
 import { TrainingMode } from '@b2b-ops/shared';
-import { api, staffToken } from '../../lib/api';
+import { api } from '../../lib/api';
 
 const INDIA_ISO = 'IN';
 const countries = Country.getAllCountries();
@@ -14,7 +14,6 @@ const countries = Country.getAllCountries();
 // captured before any onboarding activity begins.
 export function NewSchoolPage() {
   const navigate = useNavigate();
-  const token = staffToken.get()!;
   const [form, setForm] = useState({
     name: '',
     countryCode: INDIA_ISO,
@@ -76,7 +75,6 @@ export function NewSchoolPage() {
           workshopsCommitted: form.workshopsCommitted ? Number(form.workshopsCommitted) : undefined,
           trainingMode: form.trainingMode || undefined,
         },
-        token,
       );
       navigate(`/schools/${school.id}`);
     } catch (err) {

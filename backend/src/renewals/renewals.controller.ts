@@ -7,6 +7,7 @@ import { assertSchoolAccessById } from '../common/scope';
 import { RenewalsService } from './renewals.service';
 import { CreateRenewalCycleDto } from './dto/create-renewal-cycle.dto';
 import { UpdateRenewalCycleDto } from './dto/update-renewal-cycle.dto';
+import { ActivityService } from '../activity/activity.service';
 
 @Controller('schools/:schoolId/renewals')
 @UseGuards(StaffAuthGuard)
@@ -14,6 +15,7 @@ export class RenewalsController {
   constructor(
     private renewals: RenewalsService,
     private prisma: PrismaService,
+    private activity: ActivityService,
   ) {}
 
   @Get()
@@ -35,7 +37,9 @@ export class RenewalsController {
     @CurrentStaff() staff: StaffJwtPayload,
   ) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.renewals.create(schoolId, dto);
+    const cycle = await this.renewals.create(schoolId, dto);
+    await this.activity.record(schoolId, staff, `Renewal cycle ${cycle.cycleLabel} opened`);
+    return cycle;
   }
 
   @Patch(':cycleId')
@@ -46,6 +50,13 @@ export class RenewalsController {
     @CurrentStaff() staff: StaffJwtPayload,
   ) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
-    return this.renewals.update(schoolId, cycleId, dto);
+    const cycle = await this.renewals.update(schoolId, cycleId, dto);
+    await this.activity.record(
+      schoolId,
+      staff,
+      `Renewal ${cycle.cycleLabel} updated`,
+      dto.renewalStatus ? `Status: ${dto.renewalStatus}` : null,
+    );
+    return cycle;
   }
 }

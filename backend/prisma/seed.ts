@@ -92,7 +92,7 @@ async function main() {
   for (const s of DEV_STAFF) {
     await prisma.staff.upsert({
       where: { email: s.email },
-      create: { name: s.name, email: s.email, role: s.role, passwordHash },
+      create: { name: s.name, email: s.email, role: s.role, passwordHash, approvedAt: new Date() },
       update: {},
     });
   }

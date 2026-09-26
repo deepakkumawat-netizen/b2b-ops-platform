@@ -4,7 +4,7 @@ import { api, CompetitionParticipation } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { SparkleIcon } from '../../components/icons';
 
-export function SchoolCompetitionsTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolCompetitionsTab({ schoolId }: { schoolId: string }) {
   const [competitions, setCompetitions] = useState<CompetitionParticipation[]>([]);
   const [form, setForm] = useState<{
     name: string;
@@ -26,7 +26,7 @@ export function SchoolCompetitionsTab({ schoolId, token }: { schoolId: string; t
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    api.listCompetitions(schoolId, token).then(setCompetitions).catch((err) => setError(err.message));
+    api.listCompetitions(schoolId).then(setCompetitions).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -41,7 +41,6 @@ export function SchoolCompetitionsTab({ schoolId, token }: { schoolId: string; t
           date: new Date(form.date).toISOString(),
           studentsParticipated: form.studentsParticipated ? Number(form.studentsParticipated) : undefined,
         },
-        token,
       );
       setForm({
         name: '',

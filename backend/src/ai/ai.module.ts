@@ -18,10 +18,11 @@ import { DataCompletenessAgentService } from './agents/data-completeness-agent.s
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
+import { CronController } from './cron.controller';
 
 @Module({
   imports: [NotificationsModule, EngagementModule, RenewalsModule, WorkshopsModule],
-  controllers: [AgentSuggestionsController],
+  controllers: [AgentSuggestionsController, CronController],
   providers: [
     GeminiService,
     GroqService,

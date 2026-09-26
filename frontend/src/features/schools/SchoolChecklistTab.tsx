@@ -4,12 +4,12 @@ import { api, SchoolPhaseTask } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { InboxIcon } from '../../components/icons';
 
-export function SchoolChecklistTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolChecklistTab({ schoolId }: { schoolId: string }) {
   const [tasks, setTasks] = useState<SchoolPhaseTask[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    api.listPhaseTasks(schoolId, token).then(setTasks).catch((err) => setError(err.message));
+    api.listPhaseTasks(schoolId).then(setTasks).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -17,7 +17,7 @@ export function SchoolChecklistTab({ schoolId, token }: { schoolId: string; toke
   async function toggle(task: SchoolPhaseTask) {
     const nextStatus = task.status === PhaseTaskStatus.DONE ? PhaseTaskStatus.PENDING : PhaseTaskStatus.DONE;
     try {
-      await api.updatePhaseTask(schoolId, task.id, { status: nextStatus }, token);
+      await api.updatePhaseTask(schoolId, task.id, { status: nextStatus });
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update task');

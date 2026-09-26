@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { SkeletonCard } from '../../components/Skeleton';
 
-export function SchoolInfraTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolInfraTab({ schoolId }: { schoolId: string }) {
   const [form, setForm] = useState({
     labCapacity: '',
     internetConnectivity: '',
@@ -16,7 +16,7 @@ export function SchoolInfraTab({ schoolId, token }: { schoolId: string; token: s
   useEffect(() => {
     setLoading(true);
     api
-      .getInfraDiagnostic(schoolId, token)
+      .getInfraDiagnostic(schoolId)
       .then((d) => {
         if (d) {
           setForm({
@@ -36,7 +36,7 @@ export function SchoolInfraTab({ schoolId, token }: { schoolId: string; token: s
     setError(null);
     setSaved(false);
     try {
-      await api.upsertInfraDiagnostic(schoolId, form, token);
+      await api.upsertInfraDiagnostic(schoolId, form);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save');

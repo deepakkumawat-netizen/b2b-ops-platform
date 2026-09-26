@@ -6,12 +6,14 @@ import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { schoolScopeWhere } from '../common/scope';
 import { DraftedSuggestion } from './drafted-suggestion.interface';
 import { UpdateAgentSuggestionDto } from './dto/update-agent-suggestion.dto';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class AgentSuggestionsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private activity: ActivityService,
   ) {}
 
   list(staff: StaffJwtPayload) {
@@ -109,6 +111,7 @@ export class AgentSuggestionsService {
       subject: suggestion.draftSubject,
       body: suggestion.draftBody,
     });
+    await this.activity.record(suggestion.schoolId, staff, `Approved & sent AI draft: ${suggestion.draftSubject}`);
     return this.prisma.agentSuggestion.update({
       where: { id: suggestion.id },
       data: { status: SuggestionStatus.SENT, reviewedByStaffId: staff.sub, reviewedAt: new Date() },
@@ -117,6 +120,7 @@ export class AgentSuggestionsService {
 
   async reject(id: string, staff: StaffJwtPayload) {
     const suggestion = await this.findScoped(id, staff);
+    await this.activity.record(suggestion.schoolId, staff, `Rejected AI draft: ${suggestion.draftSubject}`);
     return this.prisma.agentSuggestion.update({
       where: { id: suggestion.id },
       data: { status: SuggestionStatus.REJECTED, reviewedByStaffId: staff.sub, reviewedAt: new Date() },

@@ -1,15 +1,16 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { StaffRole } from '@b2b-ops/shared';
-import { api, staffToken, staffUser } from '../../lib/api';
+import { api } from '../../lib/api';
 
-const ROLE_LABELS: Record<StaffRole, string> = {
-  [StaffRole.SUPER_ADMIN]: 'Super Admin',
-  [StaffRole.SALES]: 'Sales',
-  [StaffRole.ACCOUNT_MANAGER]: 'Account Manager',
-  [StaffRole.OPERATIONS]: 'Operations',
-  [StaffRole.TRAINING]: 'Training',
-};
+// SUPER_ADMIN is deliberately absent — the backend rejects it too; a Super
+// Admin grants it from the Staff page.
+const SELF_SIGNUP_ROLES: { value: StaffRole; label: string }[] = [
+  { value: StaffRole.SALES, label: 'Sales' },
+  { value: StaffRole.ACCOUNT_MANAGER, label: 'Account Manager' },
+  { value: StaffRole.OPERATIONS, label: 'Operations' },
+  { value: StaffRole.TRAINING, label: 'Training' },
+];
 
 export function SignupPage() {
   const [name, setName] = useState('');
@@ -18,7 +19,7 @@ export function SignupPage() {
   const [role, setRole] = useState<StaffRole | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const navigate = useNavigate();
+  const [requested, setRequested] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,10 +30,8 @@ export function SignupPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const { accessToken, staff } = await api.staffSignup({ name, email, password, role });
-      staffToken.set(accessToken);
-      staffUser.set(staff);
-      navigate('/dashboard');
+      await api.staffSignup({ name, email, password, role });
+      setRequested(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {
@@ -40,19 +39,36 @@ export function SignupPage() {
     }
   }
 
+  if (requested) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-form">
+          <h1>Request received</h1>
+          <p className="auth-subtitle">
+            A Super Admin has been notified. You'll get an email at <strong>{email}</strong> once your account is approved,
+            and then you can sign in.
+          </p>
+          <Link to="/login">
+            <button type="button">Back to sign in</button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-shell">
       <form className="auth-form" onSubmit={onSubmit}>
-        <h1>Create account</h1>
+        <h1>Request an account</h1>
         <p className="auth-subtitle">
-          For anyone on the operations team who needs access — your Super Admin gets notified once you sign up.
+          For the operations team — use your work email. A Super Admin approves new accounts before they can sign in.
         </p>
         <label>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus autoComplete="name" />
         </label>
         <label>
-          Email
+          Work email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
         </label>
         <label>
@@ -70,16 +86,16 @@ export function SignupPage() {
           Designation
           <select value={role} onChange={(e) => setRole(e.target.value as StaffRole)} required>
             <option value="">—</option>
-            {Object.values(StaffRole).map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+            {SELF_SIGNUP_ROLES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
           </select>
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Creating account…' : 'Create account'}
+          {submitting ? 'Sending request…' : 'Request account'}
         </button>
         <p className="auth-switch">
           Already have an account? <Link to="/login">Sign in</Link>

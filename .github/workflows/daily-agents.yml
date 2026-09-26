@@ -1,0 +1,41 @@
+# Runs the AI agents every morning at 8:00 IST (02:30 UTC). Render's free
+# plan sleeps the service, so the in-app @Cron can't be relied on — this
+# wakes the app and triggers the same run via POST /api/cron/run-agents.
+#
+# One-time setup: repo Settings → Secrets and variables → Actions → add
+#   APP_URL      e.g. https://b2b-ops-platform.onrender.com (no trailing slash)
+#   CRON_SECRET  the value Render generated for the CRON_SECRET env var
+name: Daily agent run
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the app
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          # A sleeping free-plan service can take ~1 minute to boot.
+          for i in $(seq 1 10); do
+            if curl -fsS --max-time 30 "$APP_URL/api/health"; then exit 0; fi
+            echo "Not up yet (attempt $i), retrying in 15s…"
+            sleep 15
+          done
+          echo "::error::App did not respond at $APP_URL/api/health"
+          exit 1
+      - name: Trigger agents
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          response=$(curl -fsS --max-time 300 -X POST -H "x-cron-secret: $CRON_SECRET" "$APP_URL/api/cron/run-agents")
+          echo "$response"
+          # Surface per-agent failures as a warning on the run.
+          if echo "$response" | grep -q '"errors":{"'; then
+            echo "::warning::Some agents failed — see the response above."
+          fi

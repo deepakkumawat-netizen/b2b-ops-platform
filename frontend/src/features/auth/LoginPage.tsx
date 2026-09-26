@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, staffToken, staffUser } from '../../lib/api';
+import { api, staffSession } from '../../lib/api';
 
 // Dev-only convenience while the tool is under construction — pre-fills the
 // seeded Super Admin login so whoever's testing locally doesn't retype it.
@@ -20,9 +20,8 @@ export function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const { accessToken, staff } = await api.staffLogin(email, password);
-      staffToken.set(accessToken);
-      staffUser.set(staff);
+      const { staff } = await api.staffLogin(email, password);
+      staffSession.set(staff);
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -55,7 +54,7 @@ export function LoginPage() {
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
         <p className="auth-switch">
-          Need access? <Link to="/signup">Create an account</Link>
+          Need access? <Link to="/signup">Request an account</Link>
         </p>
       </form>
     </div>

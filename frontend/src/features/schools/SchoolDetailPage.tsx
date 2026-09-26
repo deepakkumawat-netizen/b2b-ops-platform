@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, School, staffToken } from '../../lib/api';
+import { api, School } from '../../lib/api';
 import { SchoolChecklistTab } from './SchoolChecklistTab';
 import { SchoolTeachersTab } from './SchoolTeachersTab';
 import { SchoolInfraTab } from './SchoolInfraTab';
@@ -8,15 +8,15 @@ import { SchoolWorkshopsTab } from './SchoolWorkshopsTab';
 import { SchoolEngagementTab } from './SchoolEngagementTab';
 import { SchoolCompetitionsTab } from './SchoolCompetitionsTab';
 import { SchoolRenewalsTab } from './SchoolRenewalsTab';
+import { SchoolActivityTab } from './SchoolActivityTab';
 import { PhaseProgress } from '../../components/PhaseProgress';
 import { Skeleton, SkeletonCard } from '../../components/Skeleton';
 
-const TABS = ['Checklist', 'Teachers', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal'] as const;
+const TABS = ['Checklist', 'Teachers', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal', 'Activity'] as const;
 type Tab = (typeof TABS)[number];
 
 export function SchoolDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const token = staffToken.get()!;
   const [school, setSchool] = useState<School | null>(null);
   const [tab, setTab] = useState<Tab>('Checklist');
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function SchoolDetailPage() {
 
   function reload() {
     if (!id) return;
-    api.getSchool(id, token).then(setSchool).catch((err) => setError(err.message));
+    api.getSchool(id).then(setSchool).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [id]);
@@ -33,7 +33,7 @@ export function SchoolDetailPage() {
     if (!id) return;
     setWarning(null);
     try {
-      const result = await api.advanceSchoolPhase(id, token);
+      const result = await api.advanceSchoolPhase(id);
       setSchool(result.school);
       if (result.warning) setWarning(result.warning);
     } catch (err) {
@@ -84,13 +84,14 @@ export function SchoolDetailPage() {
       </div>
 
       <div className="tab-content">
-        {tab === 'Checklist' && <SchoolChecklistTab schoolId={id} token={token} />}
-        {tab === 'Teachers' && <SchoolTeachersTab schoolId={id} token={token} />}
-        {tab === 'Infra' && <SchoolInfraTab schoolId={id} token={token} />}
-        {tab === 'Workshops' && <SchoolWorkshopsTab schoolId={id} token={token} />}
-        {tab === 'Engagement' && <SchoolEngagementTab schoolId={id} token={token} />}
-        {tab === 'Competitions' && <SchoolCompetitionsTab schoolId={id} token={token} />}
-        {tab === 'Renewal' && <SchoolRenewalsTab schoolId={id} token={token} />}
+        {tab === 'Checklist' && <SchoolChecklistTab schoolId={id} />}
+        {tab === 'Teachers' && <SchoolTeachersTab schoolId={id} />}
+        {tab === 'Infra' && <SchoolInfraTab schoolId={id} />}
+        {tab === 'Workshops' && <SchoolWorkshopsTab schoolId={id} />}
+        {tab === 'Engagement' && <SchoolEngagementTab schoolId={id} />}
+        {tab === 'Competitions' && <SchoolCompetitionsTab schoolId={id} />}
+        {tab === 'Renewal' && <SchoolRenewalsTab schoolId={id} />}
+        {tab === 'Activity' && <SchoolActivityTab schoolId={id} />}
       </div>
     </div>
   );

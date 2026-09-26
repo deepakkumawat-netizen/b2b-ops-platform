@@ -3,6 +3,7 @@ import { AgentKey, SchoolLifecyclePhase, SuggestionType } from '@b2b-ops/shared'
 import { PrismaService } from '../../prisma/prisma.service';
 import { RenewalsService } from '../../renewals/renewals.service';
 import { AgentSuggestionsService } from '../agent-suggestions.service';
+import { yearInZone } from '../../common/time';
 
 // Fully autonomous — opening the record is a pure administrative step, not
 // a judgment call (the human still fills in the feedback call date and
@@ -10,7 +11,7 @@ import { AgentSuggestionsService } from '../agent-suggestions.service';
 // condition IS "has no renewal cycle yet", so a school only ever matches
 // once, no separate de-dup check needed.
 function defaultCycleLabel(now: Date): string {
-  const year = now.getFullYear();
+  const year = yearInZone(now);
   return `${year}-${String((year + 1) % 100).padStart(2, '0')}`;
 }
 

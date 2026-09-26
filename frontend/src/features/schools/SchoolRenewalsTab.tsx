@@ -4,15 +4,15 @@ import { api, RenewalCycle, YearSummary } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { RefreshIcon } from '../../components/icons';
 
-export function SchoolRenewalsTab({ schoolId, token }: { schoolId: string; token: string }) {
+export function SchoolRenewalsTab({ schoolId }: { schoolId: string }) {
   const [cycles, setCycles] = useState<RenewalCycle[]>([]);
   const [summary, setSummary] = useState<YearSummary | null>(null);
   const [newLabel, setNewLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    api.listRenewals(schoolId, token).then(setCycles).catch((err) => setError(err.message));
-    api.getRenewalYearSummary(schoolId, token).then(setSummary).catch((err) => setError(err.message));
+    api.listRenewals(schoolId).then(setCycles).catch((err) => setError(err.message));
+    api.getRenewalYearSummary(schoolId).then(setSummary).catch((err) => setError(err.message));
   }
 
   useEffect(reload, [schoolId]);
@@ -20,7 +20,7 @@ export function SchoolRenewalsTab({ schoolId, token }: { schoolId: string; token
   async function createCycle(e: FormEvent) {
     e.preventDefault();
     try {
-      await api.createRenewal(schoolId, newLabel, token);
+      await api.createRenewal(schoolId, newLabel);
       setNewLabel('');
       reload();
     } catch (err) {
@@ -30,7 +30,7 @@ export function SchoolRenewalsTab({ schoolId, token }: { schoolId: string; token
 
   async function updateCycle(cycle: RenewalCycle, patch: Partial<RenewalCycle>) {
     try {
-      await api.updateRenewal(schoolId, cycle.id, patch, token);
+      await api.updateRenewal(schoolId, cycle.id, patch);
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update');

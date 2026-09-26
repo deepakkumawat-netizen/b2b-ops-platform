@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StaffJwtPayload } from '../jwt-payload.interface';
+import { readSessionCookie } from '../session-cookie';
 
 @Injectable()
 export class StaffJwtStrategy extends PassportStrategy(Strategy, 'jwt-staff') {
@@ -12,7 +13,9 @@ export class StaffJwtStrategy extends PassportStrategy(Strategy, 'jwt-staff') {
     config: ConfigService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // Browser sessions use the httpOnly cookie; the Bearer header still
+      // works for scripts and API clients.
+      jwtFromRequest: ExtractJwt.fromExtractors([readSessionCookie, ExtractJwt.fromAuthHeaderAsBearerToken()]),
       ignoreExpiration: false,
       secretOrKey: config.get<string>('JWT_ACCESS_SECRET'),
     });

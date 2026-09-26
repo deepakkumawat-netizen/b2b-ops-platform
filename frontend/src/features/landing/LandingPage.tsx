@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom';
-import { useStaffToken } from '../../lib/api';
+import { useStaffUser } from '../../lib/api';
 import { PHASE_LABELS, PHASE_ORDER } from '../../lib/phases';
 import {
   AiDraftIllustration,
@@ -40,8 +40,8 @@ const ROLES = [
 ];
 
 export function LandingPage() {
-  const token = useStaffToken();
-  if (token) return <Navigate to="/dashboard" replace />;
+  const me = useStaffUser();
+  if (me) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="landing">

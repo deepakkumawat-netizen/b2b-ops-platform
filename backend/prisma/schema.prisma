@@ -33,6 +33,10 @@ model Staff {
   passwordHash String
   role         StaffRole
   isActive     Boolean   @default(true)
+  // Null = self-signup still awaiting a Super Admin's approval (isActive is
+  // false until then). Set = approved at least once; isActive=false after
+  // that means deliberately deactivated.
+  approvedAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -41,6 +45,7 @@ model Staff {
   completedPhaseTasks   SchoolPhaseTask[] @relation("CompletedBy")
   engagementLogs        EngagementLog[]
   reviewedSuggestions   AgentSuggestion[]
+  schoolActivities      SchoolActivity[]
 }
 
 // ── School (the B2B account) & its 10-phase SOP lifecycle ───────────────
@@ -104,6 +109,7 @@ model School {
   renewalCycles     RenewalCycle[]
   emailLogs         EmailLog[]
   agentSuggestions  AgentSuggestion[]
+  activities        SchoolActivity[]
 }
 
 // ── Phase-task checklist engine ──────────────────────────────────────────
@@ -342,4 +348,23 @@ model AgentSuggestion {
   reviewedByStaff    Staff?           @relation(fields: [reviewedByStaffId], references: [id])
   reviewedAt         DateTime?
   createdAt          DateTime         @default(now())
+}
+
+// ── Per-school audit trail ────────────────────────────────────────────────
+// One row per human action worth answering "who did this, and when?" for
+// (phase advanced, checklist task ticked, AI draft approved…). The school's
+// Activity tab merges these with EmailLog and autonomous-agent rows, so
+// emails and agent actions are not duplicated here.
+
+model SchoolActivity {
+  id           String   @id @default(cuid())
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actorStaffId String?
+  actorStaff   Staff?   @relation(fields: [actorStaffId], references: [id], onDelete: SetNull)
+  action       String
+  detail       String?
+  createdAt    DateTime @default(now())
+
+  @@index([schoolId, createdAt])
 }

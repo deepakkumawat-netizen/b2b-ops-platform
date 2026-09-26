@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { StaffRole } from '@b2b-ops/shared';
@@ -7,6 +7,21 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { normalizeEmail } from '../common/normalize-email';
 import { StaffJwtPayload } from './jwt-payload.interface';
 import { SignupDto } from './dto/signup.dto';
+
+/** Comma-separated SIGNUP_ALLOWED_DOMAINS (default codevidhya.com); "*" allows any domain. */
+export function allowedSignupDomains(): string[] {
+  return (process.env.SIGNUP_ALLOWED_DOMAINS ?? 'codevidhya.com')
+    .split(',')
+    .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean);
+}
+
+export function isAllowedSignupEmail(email: string): boolean {
+  const domains = allowedSignupDomains();
+  if (domains.includes('*')) return true;
+  const domain = email.split('@')[1]?.toLowerCase();
+  return !!domain && domains.includes(domain);
+}
 
 // Runs argon2 for roughly the same cost whether or not a real password hash
 // exists to check against, so response timing alone can't reveal whether an
@@ -27,39 +42,47 @@ export class AuthService {
     private notifications: NotificationsService,
   ) {}
 
-  // Self-service account creation for anyone on the operations team — the
-  // account is usable immediately (role/designation controls what it can
-  // access via RolesGuard), but every Super Admin gets an email so unwanted
-  // sign-ups are caught rather than gated behind an approval step nobody
-  // wants to run day-to-day.
+  // Self-service account *request* — only for emails on an allowed company
+  // domain, never as SUPER_ADMIN (see SignupDto), and the account stays
+  // inactive until a Super Admin approves it on the Staff page. Before this,
+  // anyone on the internet could sign up as SUPER_ADMIN and get in instantly.
   async signup(dto: SignupDto) {
     const email = normalizeEmail(dto.email);
+    if (!isAllowedSignupEmail(email)) {
+      throw new ForbiddenException(`Sign-up is limited to ${allowedSignupDomains().map((d) => '@' + d).join(', ')} email addresses`);
+    }
     const existing = await this.prisma.staff.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
     const passwordHash = await AuthService.hashPassword(dto.password);
     const staff = await this.prisma.staff.create({
-      data: { name: dto.name, email, passwordHash, role: dto.role },
+      data: { name: dto.name, email, passwordHash, role: dto.role, isActive: false, approvedAt: null },
     });
 
     await this.notifications.sendTemplateEmail({
       recipient: staff.email,
-      templateKey: 'STAFF_ACCOUNT_CREATED',
-      subject: 'Your B2B Ops Platform account is ready',
-      body: `Hi ${staff.name},\n\nYour account has been created with the role ${staff.role}. You can now sign in at the B2B Ops Platform with the email and password you just set.\n\nIf you didn't request this account, contact your Super Admin.`,
+      templateKey: 'STAFF_ACCOUNT_REQUESTED',
+      subject: 'Your B2B Ops Platform account request was received',
+      body: `Hi ${staff.name},
+
+We received your request for a B2B Ops Platform account with the role ${staff.role}. A Super Admin will review it — you'll get another email as soon as it's approved.
+
+If you didn't request this account, you can ignore this email.`,
     });
 
     const superAdmins = await this.prisma.staff.findMany({
-      where: { role: StaffRole.SUPER_ADMIN, isActive: true, id: { not: staff.id } },
+      where: { role: StaffRole.SUPER_ADMIN, isActive: true },
     });
     await Promise.all(
       superAdmins.map((admin) =>
         this.notifications.sendTemplateEmail({
           recipient: admin.email,
           templateKey: 'STAFF_SIGNUP_ADMIN_NOTICE',
-          subject: `New staff account created: ${staff.name} (${staff.role})`,
-          body: `${staff.name} (${staff.email}) just created a staff account on B2B Ops Platform with the role ${staff.role}.\n\nIf this wasn't expected, deactivate the account from the database.`,
+          subject: `Account awaiting approval: ${staff.name} (${staff.role})`,
+          body: `${staff.name} (${staff.email}) requested a B2B Ops Platform account with the role ${staff.role}.
+
+Approve or reject it from the Staff page. The account can't sign in until you do.`,
         }),
       ),
     );
@@ -70,8 +93,15 @@ export class AuthService {
   async validateStaff(email: string, password: string) {
     const staff = await this.prisma.staff.findUnique({ where: { email: normalizeEmail(email) } });
     const passwordOk = await verifyPasswordTimingSafe(staff?.passwordHash, password);
-    if (!staff || !staff.isActive || !passwordOk) {
+    if (!staff || !passwordOk) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    // Only reached with the correct password, so these specific messages
+    // don't let a stranger probe which emails are registered.
+    if (!staff.isActive) {
+      throw new UnauthorizedException(
+        staff.approvedAt ? 'This account has been deactivated. Contact your Super Admin.' : 'Your account is awaiting approval from a Super Admin.',
+      );
     }
     return staff;
   }
@@ -79,7 +109,8 @@ export class AuthService {
   issueStaffTokens(staff: { id: string; role: string }) {
     const payload: StaffJwtPayload = { sub: staff.id, role: staff.role as StaffJwtPayload['role'] };
     const accessToken = this.jwt.sign(payload);
-    return { accessToken };
+    const decoded = this.jwt.decode(accessToken) as { exp?: number } | null;
+    return { accessToken, expiresAt: decoded?.exp };
   }
 
   static async hashPassword(plain: string): Promise<string> {
