@@ -4,7 +4,7 @@ School onboarding & lifecycle tracker for CodeVidhya's B2B Operations team — i
 10-phase SOP (Sales handover → Welcome → Orientation → Onboarding setup → Data collection/LMS →
 Infra diagnostic → Teacher training → Ongoing engagement → Competitions → Annual renewal) as a
 lifecycle tracker with per-phase checklists, a dashboard, and real email touchpoints (welcome
-email, workshop confirmation/reminder/completion) via Resend.
+email, workshop confirmation/reminder/completion) via Brevo (or Resend as a fallback).
 
 ## Stack
 
@@ -34,7 +34,7 @@ Seeded dev logins (password `changeme123` for all):
 | TRAINING        | training@b2bops.dev |
 
 Welcome/workshop emails are skipped (and logged as `SKIPPED` in `EmailLog`) unless
-`RESEND_API_KEY` is set in `backend/.env`.
+`BREVO_API_KEY` + `BREVO_FROM` (or `RESEND_API_KEY`) are set in `backend/.env`.
 
 ## Staff accounts
 
@@ -84,7 +84,7 @@ DATABASE_URL="<neon connection string>" npx prisma db seed --schema=backend/pris
   `backend/prisma/seed.ts`'s `PHASE_TASK_TEMPLATES`.
 - `backend/src/workshops`, `engagement`, `competitions`, `renewals`, `teachers`,
   `infra-diagnostics` — one module per SOP sub-area.
-- `backend/src/notifications` — `MailerService` (Resend) + `NotificationsService`, which logs
+- `backend/src/notifications` — `MailerService` (Brevo, Resend fallback) + `NotificationsService`, which logs
   every email attempt to `EmailLog` regardless of whether it actually sent.
 - `backend/src/dashboard` — schools-by-phase, overdue visits/calls, upcoming workshops, pending
   renewals.

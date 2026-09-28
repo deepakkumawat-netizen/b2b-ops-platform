@@ -52,10 +52,20 @@ services:
         generateValue: true
       # Welcome/workshop emails (backend/src/notifications/mailer.service.ts).
       # Leaving these unset is safe — every attempt still gets an EmailLog
-      # row, marked SKIPPED, instead of throwing. Get a free key at
-      # resend.com/api-keys (100 emails/day). Until you verify a sending
-      # domain there, RESEND_FROM can only actually deliver to the email you
-      # signed up with.
+      # row, marked SKIPPED, instead of throwing.
+      # Brevo is preferred (used whenever BREVO_API_KEY + BREVO_FROM are set):
+      # free key at app.brevo.com → SMTP & API → API Keys (300 emails/day).
+      # BREVO_FROM must be a sender verified under Senders & IP → Senders
+      # (Brevo emails that address a confirmation link — no DNS changes).
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM
+        sync: false
+      - key: BREVO_FROM_NAME
+        value: CodeVidhya B2B Ops
+      # Resend fallback — only used if Brevo isn't configured. Until
+      # codevidhya.com is verified in Resend (needs Route 53 DNS records),
+      # it only delivers to the email the Resend account signed up with.
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
