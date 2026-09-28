@@ -39,7 +39,9 @@ export class WorkshopReminderAgentService {
     let sent = 0;
     for (const workshop of dueWorkshops) {
       try {
-        await this.workshops.remind(workshop.schoolId, workshop.id);
+        const result = await this.workshops.remind(workshop.schoolId, workshop.id);
+        // Email skipped/failed (see its EmailLog row) — not "auto-sent".
+        if (!result.reminderSentAt) continue;
       } catch (err) {
         this.logger.warn(`Failed to auto-send reminder for workshop ${workshop.id}: ${err instanceof Error ? err.message : err}`);
         continue;

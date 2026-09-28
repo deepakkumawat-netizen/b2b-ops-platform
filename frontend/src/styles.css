@@ -1671,6 +1671,8 @@ a:hover {
   box-shadow: var(--shadow-md);
   width: 100%;
   max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
   padding: var(--space-5);
   display: flex;
   flex-direction: column;

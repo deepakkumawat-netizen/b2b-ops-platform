@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { SCHOOL_LIFECYCLE_PHASE_LABELS, SCHOOL_LIFECYCLE_PHASE_ORDER, SchoolLifecyclePhase } from '@b2b-ops/shared';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { SCHOOL_LIFECYCLE_PHASE_LABELS, SCHOOL_LIFECYCLE_PHASE_ORDER, SchoolLifecyclePhase, StaffRole } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { PhaseTasksService } from '../phase-tasks/phase-tasks.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -17,6 +17,7 @@ export class SchoolsService {
   ) {}
 
   async create(dto: CreateSchoolDto, staff: StaffJwtPayload) {
+    await this.assertAssignableAccountManager(dto.assignedAccountManagerId);
     const school = await this.prisma.school.create({
       data: { ...dto, currentPhase: SchoolLifecyclePhase.SALES_HANDOVER },
     });
@@ -55,14 +56,35 @@ export class SchoolsService {
     const school = await this.prisma.school.findUnique({ where: { id } });
     if (!school) throw new NotFoundException('School not found');
     assertSchoolAccess(staff, school);
+    const reassigning =
+      dto.assignedAccountManagerId !== undefined && (dto.assignedAccountManagerId ?? null) !== school.assignedAccountManagerId;
+    if (reassigning) {
+      // An account manager only sees their own schools, so letting them
+      // reassign one would just make it vanish from their list.
+      if (staff.role === StaffRole.ACCOUNT_MANAGER) {
+        throw new ForbiddenException('Only Sales, Operations or a Super Admin can change the account manager');
+      }
+      await this.assertAssignableAccountManager(dto.assignedAccountManagerId);
+    }
     const updated = await this.prisma.school.update({ where: { id }, data: dto });
     const changed = (Object.keys(dto) as (keyof UpdateSchoolDto)[]).filter(
-      (key) => dto[key] !== undefined && String(dto[key]) !== String(school[key as keyof typeof school] ?? ''),
+      (key) => dto[key] !== undefined && String(dto[key] ?? '') !== String(school[key as keyof typeof school] ?? ''),
     );
     if (changed.length > 0) {
-      await this.activity.record(id, staff, 'School details updated', `Changed: ${changed.join(', ')}`);
+      const labels = changed.map((key) => (key === 'assignedAccountManagerId' ? 'account manager' : key));
+      await this.activity.record(id, staff, 'School details updated', `Changed: ${labels.join(', ')}`);
     }
     return updated;
+  }
+
+  // Without this a typo'd or stale id surfaces as a raw foreign-key 500, and
+  // any staff id (e.g. a Sales rep) could be set as the "account manager".
+  private async assertAssignableAccountManager(staffId: string | null | undefined) {
+    if (!staffId) return;
+    const manager = await this.prisma.staff.findUnique({ where: { id: staffId } });
+    if (!manager || !manager.isActive || manager.role !== StaffRole.ACCOUNT_MANAGER) {
+      throw new BadRequestException('Account manager must be an active Account Manager');
+    }
   }
 
   /** Advances a school to the immediate next SOP phase only — the ordered

@@ -61,8 +61,11 @@ export class PhaseTasksService {
       await this.activity.record(schoolId, staff, `${verb}: ${task.template.label}`, dto.notes ?? null);
     }
 
+    // emailSent tells the checklist UI whether to warn that the email this
+    // task promises didn't actually go out (undefined = task sends none).
+    let emailSent: boolean | undefined;
     if (task.template.key === WELCOME_EMAIL_TASK_KEY && dto.status === PhaseTaskStatus.DONE) {
-      await this.notifications.sendTemplateEmail({
+      emailSent = await this.notifications.sendTemplateEmail({
         schoolId: task.school.id,
         recipient: task.school.ownerEmail,
         templateKey: 'welcome_email',
@@ -75,7 +78,7 @@ export class PhaseTasksService {
       });
     }
 
-    return updated;
+    return { ...updated, emailSent };
   }
 
   /** Count of PENDING tasks in a given phase — used by SchoolsService to

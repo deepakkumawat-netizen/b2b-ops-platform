@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -29,9 +29,15 @@ export function NewSchoolPage() {
     workshopsCommitted: '',
     trainingMode: '' as TrainingMode | '',
     specialCommitments: '',
+    assignedAccountManagerId: '',
   });
+  const [accountManagers, setAccountManagers] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.listAccountManagers().then(setAccountManagers).catch(() => setAccountManagers([]));
+  }, []);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -74,6 +80,7 @@ export function NewSchoolPage() {
           specialCommitments: form.specialCommitments,
           workshopsCommitted: form.workshopsCommitted ? Number(form.workshopsCommitted) : undefined,
           trainingMode: form.trainingMode || undefined,
+          assignedAccountManagerId: form.assignedAccountManagerId || undefined,
         },
       );
       navigate(`/schools/${school.id}`);
@@ -185,6 +192,25 @@ export function NewSchoolPage() {
             <option value={TrainingMode.ONLINE}>Online</option>
             <option value={TrainingMode.OFFLINE}>Offline</option>
           </select>
+        </label>
+
+        <div className="form-section-title">Assignment</div>
+        <label className="span-2">
+          Account manager
+          <select
+            value={form.assignedAccountManagerId}
+            onChange={(e) => set('assignedAccountManagerId', e.target.value)}
+          >
+            <option value="">Unassigned</option>
+            {accountManagers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            The school's point of contact — emails to the school go out under their name, and replies reach them.
+          </span>
         </label>
 
         <div className="form-section-title">Commitments</div>

@@ -170,6 +170,7 @@ export type Workshop = {
   confirmationSentAt: string | null;
   reminderSentAt: string | null;
   completedAt: string | null;
+  feedbackFormSentAt: string | null;
   feedbackReceivedAt: string | null;
   feedbackSummary: string | null;
   cancelReason: string | null;
@@ -291,6 +292,7 @@ export const api = {
   updateStaff: (id: string, dto: { role?: StaffRole; isActive?: boolean }) =>
     request<StaffMember>(`/staff/${id}`, { method: 'PATCH', body: JSON.stringify(dto) }),
   rejectPendingStaff: (id: string) => request<{ success: boolean }>(`/staff/${id}`, { method: 'DELETE' }),
+  listAccountManagers: () => request<{ id: string; name: string }[]>('/staff/account-managers'),
 
   listSchoolActivity: (schoolId: string) => request<ActivityEntry[]>(`/schools/${schoolId}/activity`),
   getRenewalsReport: () => request<RenewalReportRow[]>('/reports/renewals'),
@@ -307,7 +309,8 @@ export const api = {
   listPhaseTasks: (schoolId: string) =>
     request<SchoolPhaseTask[]>(`/schools/${schoolId}/phase-tasks`),
   updatePhaseTask: (schoolId: string, taskId: string, dto: { status: PhaseTaskStatus; notes?: string }) =>
-    request<SchoolPhaseTask>(`/schools/${schoolId}/phase-tasks/${taskId}`, {
+    // emailSent is only present for tasks that send an email (the welcome email).
+    request<SchoolPhaseTask & { emailSent?: boolean }>(`/schools/${schoolId}/phase-tasks/${taskId}`, {
       method: 'PATCH',
       body: JSON.stringify(dto),
     }),

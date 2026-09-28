@@ -9,6 +9,7 @@ import { SchoolEngagementTab } from './SchoolEngagementTab';
 import { SchoolCompetitionsTab } from './SchoolCompetitionsTab';
 import { SchoolRenewalsTab } from './SchoolRenewalsTab';
 import { SchoolActivityTab } from './SchoolActivityTab';
+import { EditSchoolModal } from './EditSchoolModal';
 import { PhaseProgress } from '../../components/PhaseProgress';
 import { Skeleton, SkeletonCard } from '../../components/Skeleton';
 
@@ -21,6 +22,7 @@ export function SchoolDetailPage() {
   const [tab, setTab] = useState<Tab>('Checklist');
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   function reload() {
     if (!id) return;
@@ -65,15 +67,34 @@ export function SchoolDetailPage() {
             {school.city ?? '—'}
             {school.state ? `, ${school.state}` : ''} · {school.productProgram ?? 'No program on file'}
           </p>
+          <p className="muted small">
+            Account manager: {school.assignedAccountManager?.name ?? 'Unassigned'} · Owner email:{' '}
+            {school.ownerEmail ?? 'none on file'}
+          </p>
         </div>
         <div className="school-header-phase">
           <PhaseProgress phase={school.currentPhase} />
-          {school.currentPhase !== 'ANNUAL_RENEWAL' && (
-            <button onClick={advancePhase}>Advance to Next Phase</button>
-          )}
+          <div className="button-row">
+            <button className="secondary" onClick={() => setEditing(true)}>
+              Edit school
+            </button>
+            {school.currentPhase !== 'ANNUAL_RENEWAL' && (
+              <button onClick={advancePhase}>Advance to Next Phase</button>
+            )}
+          </div>
         </div>
       </div>
       {warning && <p className="warning">{warning}</p>}
+      {editing && (
+        <EditSchoolModal
+          school={school}
+          onSaved={(updated) => {
+            setSchool(updated);
+            setEditing(false);
+          }}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       <div className="tab-bar">
         {TABS.map((t) => (

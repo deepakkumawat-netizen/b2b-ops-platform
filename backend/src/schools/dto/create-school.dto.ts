@@ -65,7 +65,7 @@ export class CreateSchoolDto {
 
   @IsOptional()
   @IsString()
-  assignedAccountManagerId?: string;
+  assignedAccountManagerId?: string | null; // null = unassign
 
   @IsOptional()
   @IsString()

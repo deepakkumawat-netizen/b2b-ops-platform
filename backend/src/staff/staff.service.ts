@@ -31,6 +31,16 @@ export class StaffService {
     });
   }
 
+  /** Who a school can be assigned to — readable by any staff (the school
+   * forms need it), so it exposes names only, not the full staff record. */
+  listAccountManagers() {
+    return this.prisma.staff.findMany({
+      where: { role: StaffRole.ACCOUNT_MANAGER, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async update(id: string, dto: UpdateStaffDto, actor: StaffJwtPayload) {
     const staff = await this.prisma.staff.findUnique({ where: { id } });
     if (!staff) throw new NotFoundException('Staff member not found');

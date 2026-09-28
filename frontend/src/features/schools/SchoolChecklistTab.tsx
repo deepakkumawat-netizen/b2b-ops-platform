@@ -7,6 +7,7 @@ import { InboxIcon } from '../../components/icons';
 export function SchoolChecklistTab({ schoolId }: { schoolId: string }) {
   const [tasks, setTasks] = useState<SchoolPhaseTask[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   function reload() {
     api.listPhaseTasks(schoolId).then(setTasks).catch((err) => setError(err.message));
@@ -16,8 +17,12 @@ export function SchoolChecklistTab({ schoolId }: { schoolId: string }) {
 
   async function toggle(task: SchoolPhaseTask) {
     const nextStatus = task.status === PhaseTaskStatus.DONE ? PhaseTaskStatus.PENDING : PhaseTaskStatus.DONE;
+    setWarning(null);
     try {
-      await api.updatePhaseTask(schoolId, task.id, { status: nextStatus });
+      const result = await api.updatePhaseTask(schoolId, task.id, { status: nextStatus });
+      if (result.emailSent === false) {
+        setWarning(`"${task.template.label}" is marked done, but the email wasn't sent. Check the Activity tab → Emails for the reason.`);
+      }
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update task');
@@ -32,6 +37,7 @@ export function SchoolChecklistTab({ schoolId }: { schoolId: string }) {
   return (
     <div>
       {error && <p className="error">{error}</p>}
+      {warning && <p className="warning">{warning}</p>}
       <p className="muted small" style={{ marginTop: 0 }}>Click anywhere on a task to mark it done — no need to hit the checkbox exactly.</p>
       {Object.entries(grouped).map(([phase, phaseTasks]) => {
         const doneCount = phaseTasks.filter((t) => t.status === PhaseTaskStatus.DONE).length;

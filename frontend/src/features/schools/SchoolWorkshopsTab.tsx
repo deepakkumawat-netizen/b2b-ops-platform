@@ -6,6 +6,7 @@ import { CalendarIcon } from '../../components/icons';
 import { Modal } from '../../components/Modal';
 
 type DialogState = { type: 'cancel' | 'feedback'; workshopId: string };
+type EmailSentField = 'confirmationSentAt' | 'reminderSentAt' | 'feedbackFormSentAt';
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
   [WorkshopStatus.SCHEDULED]: 'badge badge-muted',
@@ -19,6 +20,7 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [form, setForm] = useState({ topic: '', targetGrades: '', scheduledAt: '' });
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dialogText, setDialogText] = useState('');
 
@@ -40,12 +42,25 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   }
 
   async function run(action: () => Promise<unknown>) {
+    setWarning(null);
     try {
       await action();
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed');
     }
+  }
+
+  // For the steps that email the school: the backend only stamps the
+  // *SentAt field when the email actually went out, so a null one on the
+  // returned workshop means it was skipped or failed.
+  function runEmailStep(action: () => Promise<Workshop>, sentField: EmailSentField, emailName: string) {
+    return run(async () => {
+      const result = await action();
+      if (!result[sentField]) {
+        setWarning(`The ${emailName} email wasn't sent. Check the Activity tab → Emails for the reason, then try again.`);
+      }
+    });
   }
 
   function openDialog(type: DialogState['type'], workshopId: string) {
@@ -69,6 +84,7 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   return (
     <div>
       {error && <p className="error">{error}</p>}
+      {warning && <p className="warning">{warning}</p>}
       <div className="workshop-list">
         {workshops.map((w) => (
           <div key={w.id} className="card">
@@ -80,20 +96,47 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
               {new Date(w.scheduledAt).toLocaleString()} {w.targetGrades ? `· Grades ${w.targetGrades}` : ''}
             </p>
             <p className="small muted">
-              {w.confirmationSentAt ? '✓ Confirmation sent' : 'Not confirmed'} ·{' '}
-              {w.reminderSentAt ? '✓ Reminder sent' : 'No reminder yet'} ·{' '}
+              {w.confirmationSentAt
+                ? '✓ Confirmation sent'
+                : w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CANCELLED
+                  ? 'Not confirmed'
+                  : '⚠ Confirmation email not sent'}{' '}
+              · {w.reminderSentAt ? '✓ Reminder sent' : 'No reminder yet'}
+              {w.status === WorkshopStatus.COMPLETED && !w.feedbackFormSentAt && ' · ⚠ Thank-you email not sent'} ·{' '}
               {w.feedbackReceivedAt ? '✓ Feedback received' : 'No feedback yet'}
             </p>
             {w.cancelReason && <p className="error small">Cancelled: {w.cancelReason}</p>}
             <div className="button-row">
               {w.status === WorkshopStatus.SCHEDULED && (
-                <button onClick={() => run(() => api.confirmWorkshop(schoolId, w.id))}>Confirm</button>
+                <button onClick={() => runEmailStep(() => api.confirmWorkshop(schoolId, w.id), 'confirmationSentAt', 'confirmation')}>
+                  Confirm
+                </button>
               )}
               {w.status === WorkshopStatus.CONFIRMED && (
                 <>
-                  <button onClick={() => run(() => api.remindWorkshop(schoolId, w.id))}>Send Reminder</button>
-                  <button onClick={() => run(() => api.completeWorkshop(schoolId, w.id))}>Mark Completed</button>
+                  {!w.confirmationSentAt && (
+                    <button
+                      className="secondary"
+                      onClick={() => runEmailStep(() => api.confirmWorkshop(schoolId, w.id), 'confirmationSentAt', 'confirmation')}
+                    >
+                      Resend Confirmation
+                    </button>
+                  )}
+                  <button onClick={() => runEmailStep(() => api.remindWorkshop(schoolId, w.id), 'reminderSentAt', 'reminder')}>
+                    Send Reminder
+                  </button>
+                  <button onClick={() => runEmailStep(() => api.completeWorkshop(schoolId, w.id), 'feedbackFormSentAt', 'thank-you')}>
+                    Mark Completed
+                  </button>
                 </>
+              )}
+              {w.status === WorkshopStatus.COMPLETED && !w.feedbackFormSentAt && (
+                <button
+                  className="secondary"
+                  onClick={() => runEmailStep(() => api.completeWorkshop(schoolId, w.id), 'feedbackFormSentAt', 'thank-you')}
+                >
+                  Resend Thank-you Email
+                </button>
               )}
               {(w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CONFIRMED) && (
                 <button className="danger" onClick={() => openDialog('cancel', w.id)}>

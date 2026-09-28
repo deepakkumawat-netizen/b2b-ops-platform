@@ -19,6 +19,11 @@ export class StaffController {
     return this.staff.list();
   }
 
+  @Get('account-managers')
+  listAccountManagers() {
+    return this.staff.listAccountManagers();
+  }
+
   @Patch(':id')
   @Roles(StaffRole.SUPER_ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateStaffDto, @CurrentStaff() actor: StaffJwtPayload) {

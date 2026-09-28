@@ -37,7 +37,9 @@ export class WorkshopFeedbackNagAgentService {
     let sent = 0;
     for (const workshop of dueWorkshops) {
       try {
-        await this.workshops.nagFeedback(workshop.schoolId, workshop.id);
+        const result = await this.workshops.nagFeedback(workshop.schoolId, workshop.id);
+        // Email skipped/failed (see its EmailLog row) — not "auto-sent".
+        if (!result.feedbackNagSentAt) continue;
       } catch (err) {
         this.logger.warn(`Failed to auto-send feedback nag for workshop ${workshop.id}: ${err instanceof Error ? err.message : err}`);
         continue;
