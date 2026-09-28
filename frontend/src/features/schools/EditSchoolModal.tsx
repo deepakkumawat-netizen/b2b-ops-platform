@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { TrainingMode } from '@b2b-ops/shared';
 import { api, School, staffSession } from '../../lib/api';
 import { Modal } from '../../components/Modal';
 
@@ -8,20 +9,28 @@ const FIELDS = [
   ['ownerDesignation', 'Owner designation'],
   ['ownerEmail', 'Owner email'],
   ['ownerPhone', 'Owner phone'],
+  ['city', 'District / city'],
+  ['state', 'State'],
   ['productProgram', 'Product / program'],
+  ['gradeFrom', 'Grade from'],
+  ['gradeTo', 'Grade to'],
 ] as const;
 
 type Field = (typeof FIELDS)[number][0];
 
 // Fixes the details that matter after the Sales handover — above all the
 // owner email (where every school email goes) and the account manager
-// (who those emails come from).
+// (who those emails come from). Covers every field the checklist agent
+// needs to tick the handover tasks, so a school saved with blanks isn't
+// stuck in Phase 1.
 export function EditSchoolModal({ school, onSaved, onClose }: { school: School; onSaved: (s: School) => void; onClose: () => void }) {
   const [form, setForm] = useState<Record<Field, string>>(() => {
     const initial = {} as Record<Field, string>;
     for (const [key] of FIELDS) initial[key] = school[key] ?? '';
     return initial;
   });
+  const [workshopsCommitted, setWorkshopsCommitted] = useState(school.workshopsCommitted?.toString() ?? '');
+  const [trainingMode, setTrainingMode] = useState<TrainingMode | ''>(school.trainingMode ?? '');
   const [managerId, setManagerId] = useState(school.assignedAccountManagerId ?? '');
   const [accountManagers, setAccountManagers] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +54,8 @@ export function EditSchoolModal({ school, onSaved, onClose }: { school: School; 
         if (key === 'name') dto.name = form.name.trim();
         else dto[key] = form[key].trim() || null;
       }
+      dto.workshopsCommitted = workshopsCommitted.trim() === '' ? null : Number(workshopsCommitted);
+      dto.trainingMode = trainingMode || null;
       if (canReassign) dto.assignedAccountManagerId = managerId || null;
       await api.updateSchool(school.id, dto);
       onSaved(await api.getSchool(school.id));
@@ -72,6 +83,18 @@ export function EditSchoolModal({ school, onSaved, onClose }: { school: School; 
           />
         </label>
       ))}
+      <label>
+        Workshops committed
+        <input type="number" min={0} value={workshopsCommitted} onChange={(e) => setWorkshopsCommitted(e.target.value)} />
+      </label>
+      <label>
+        Training mode
+        <select value={trainingMode} onChange={(e) => setTrainingMode(e.target.value as TrainingMode | '')}>
+          <option value="">—</option>
+          <option value={TrainingMode.ONLINE}>Online</option>
+          <option value={TrainingMode.OFFLINE}>Offline</option>
+        </select>
+      </label>
       <label>
         Account manager
         <select value={managerId} onChange={(e) => setManagerId(e.target.value)} disabled={!canReassign}>

@@ -23,6 +23,9 @@ export function SchoolDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  // Bumped to remount the active tab so it refetches — the checklist agent
+  // may have ticked tasks or advanced the phase behind the scenes.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   function reload() {
     if (!id) return;
@@ -30,6 +33,19 @@ export function SchoolDetailPage() {
   }
 
   useEffect(reload, [id]);
+
+  // A just-created school's emails (and the ticks they earn) finish a few
+  // seconds after the page opens — refresh once when they should be done.
+  const justCreated = !!school && Date.now() - new Date(school.createdAt).getTime() < 60_000;
+  useEffect(() => {
+    if (!justCreated) return;
+    const timer = setTimeout(() => {
+      reload();
+      setRefreshKey((k) => k + 1);
+    }, 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justCreated, id]);
 
   async function advancePhase() {
     if (!id) return;
@@ -91,6 +107,7 @@ export function SchoolDetailPage() {
           onSaved={(updated) => {
             setSchool(updated);
             setEditing(false);
+            setRefreshKey((k) => k + 1);
           }}
           onClose={() => setEditing(false)}
         />
@@ -104,7 +121,7 @@ export function SchoolDetailPage() {
         ))}
       </div>
 
-      <div className="tab-content">
+      <div className="tab-content" key={refreshKey}>
         {tab === 'Checklist' && <SchoolChecklistTab schoolId={id} />}
         {tab === 'Teachers' && <SchoolTeachersTab schoolId={id} />}
         {tab === 'Infra' && <SchoolInfraTab schoolId={id} />}
