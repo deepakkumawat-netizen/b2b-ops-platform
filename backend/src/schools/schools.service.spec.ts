@@ -4,6 +4,7 @@ import { SchoolsService } from './schools.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PhaseTasksService } from '../phase-tasks/phase-tasks.service';
 import { ActivityService } from '../activity/activity.service';
+import { SchoolAutomationService } from '../automation/school-automation.service';
 
 const sales = { sub: 'sales-1', role: StaffRole.SALES };
 const am = { sub: 'am-1', role: StaffRole.ACCOUNT_MANAGER };
@@ -18,10 +19,12 @@ function makeService(staffRow: Record<string, unknown> | null) {
     staff: { findUnique: jest.fn().mockResolvedValue(staffRow) },
   };
   const activity = { record: jest.fn().mockResolvedValue(undefined) };
+  const automation = { onOwnerEmailAdded: jest.fn().mockResolvedValue(undefined) };
   const service = new SchoolsService(
     prisma as unknown as PrismaService,
     {} as PhaseTasksService,
     activity as unknown as ActivityService,
+    automation as unknown as SchoolAutomationService,
   );
   return { service, prisma, activity };
 }

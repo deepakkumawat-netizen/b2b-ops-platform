@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PhaseTaskStatus, SchoolLifecyclePhase } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { UpdatePhaseTaskDto } from './dto/update-phase-task.dto';
 import { ActivityService } from '../activity/activity.service';
-
-// The one checklist task whose completion triggers the SOP's Phase-2
-// "Welcome Email" touchpoint (SOP Step 2.2) — see updateStatus() below.
-const WELCOME_EMAIL_TASK_KEY = 'welcome_email';
+// WELCOME_EMAIL_TASK_KEY is the one checklist task whose completion triggers
+// the SOP's Phase-2 "Welcome Email" touchpoint (SOP Step 2.2). The agent
+// normally sends it when the school is created; ticking it by hand (e.g. to
+// resend) sends it again — see updateStatus() below.
+import { SchoolAutomationService, WELCOME_EMAIL_TASK_KEY } from '../automation/school-automation.service';
 
 @Injectable()
 export class PhaseTasksService {
   constructor(
     private prisma: PrismaService,
-    private notifications: NotificationsService,
     private activity: ActivityService,
+    private automation: SchoolAutomationService,
   ) {}
 
   /** Creates one SchoolPhaseTask per seeded PhaseTaskTemplate for a newly
@@ -65,17 +65,7 @@ export class PhaseTasksService {
     // task promises didn't actually go out (undefined = task sends none).
     let emailSent: boolean | undefined;
     if (task.template.key === WELCOME_EMAIL_TASK_KEY && dto.status === PhaseTaskStatus.DONE) {
-      emailSent = await this.notifications.sendTemplateEmail({
-        schoolId: task.school.id,
-        recipient: task.school.ownerEmail,
-        templateKey: 'welcome_email',
-        subject: `Welcome to CodeVidhya, ${task.school.name}!`,
-        body:
-          `Dear ${task.school.ownerName ?? 'Team'},\n\n` +
-          `Welcome aboard! This confirms our partnership for ${task.school.productProgram ?? 'your program'}. ` +
-          `Your account manager will be your point of contact for everything ahead.\n\n` +
-          `Looking forward to a great year together.\n\nTeam CodeVidhya`,
-      });
+      emailSent = await this.automation.sendWelcomeEmail(task.school);
     }
 
     return { ...updated, emailSent };

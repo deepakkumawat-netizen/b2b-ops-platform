@@ -7,6 +7,8 @@ export function SchoolTeachersTab({ schoolId }: { schoolId: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', designation: '', gradeAssigned: '' });
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
 
   function reload() {
     api.listTeachers(schoolId).then(setTeachers).catch((err) => setError(err.message));
@@ -34,12 +36,33 @@ export function SchoolTeachersTab({ schoolId }: { schoolId: string }) {
     }
   }
 
+  async function requestDetails() {
+    setError(null);
+    setNotice(null);
+    setRequesting(true);
+    try {
+      const { sent } = await api.requestTeacherDetails(schoolId);
+      if (sent) setNotice('Emailed the school a link to fill in their teacher details. What they submit appears here automatically.');
+      else setError("The form email wasn't sent — check the school has an owner email (Edit school), then see Activity → Emails.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the form');
+    } finally {
+      setRequesting(false);
+    }
+  }
+
   return (
     <div>
       {error && <p className="error">{error}</p>}
-      <p className="muted small" style={{ marginTop: 0 }}>
-        Click anywhere on a row to toggle LMS credential status.
-      </p>
+      {notice && <p className="success">{notice}</p>}
+      <div className="button-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="muted small" style={{ margin: 0 }}>
+          Click anywhere on a row to toggle LMS credential status.
+        </p>
+        <button className="secondary" onClick={requestDetails} disabled={requesting}>
+          {requesting ? 'Sending…' : 'Email teacher details form to school'}
+        </button>
+      </div>
 
       {teachers.length === 0 ? (
         <EmptyState

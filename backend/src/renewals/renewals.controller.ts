@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { StaffAuthGuard } from '../common/guards/staff-auth.guard';
 import { CurrentStaff } from '../common/decorators/current-staff.decorator';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -8,9 +8,11 @@ import { RenewalsService } from './renewals.service';
 import { CreateRenewalCycleDto } from './dto/create-renewal-cycle.dto';
 import { UpdateRenewalCycleDto } from './dto/update-renewal-cycle.dto';
 import { ActivityService } from '../activity/activity.service';
+import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
 
 @Controller('schools/:schoolId/renewals')
 @UseGuards(StaffAuthGuard)
+@UseInterceptors(SyncChecklistInterceptor)
 export class RenewalsController {
   constructor(
     private renewals: RenewalsService,

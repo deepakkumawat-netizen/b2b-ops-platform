@@ -9,9 +9,12 @@ import { StalePhaseAgentService } from './agents/stale-phase-agent.service';
 import { RenewalStalledAgentService } from './agents/renewal-stalled-agent.service';
 import { CompetitionFollowupAgentService } from './agents/competition-followup-agent.service';
 import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
+import { SchoolAutomationService } from '../automation/school-automation.service';
 import { APP_TIMEZONE } from '../common/time';
 
 export const AGENT_NAMES = [
+  // First, so later agents (e.g. stalePhase) see the phases it advanced.
+  'checklist',
   'engagement',
   'renewal',
   'workshopReminder',
@@ -32,7 +35,9 @@ export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Recor
 // Actions schedule in .github/workflows/daily-agents.yml covers that by
 // calling CronController's secret-protected endpoint every morning.
 //
-// Two agents (engagement, renewal) draft content a human approves. The rest
+// The checklist agent (SchoolAutomationService) ticks tasks the data proves
+// and advances phases — a safety net for its per-request sync; it never
+// emails. Two agents (engagement, renewal) draft content a human approves. The rest
 // act fully autonomously — one (workshopFeedbackNag) is school-facing like
 // workshopReminder/renewalCycleOpener; four more (stalePhase, renewalStalled,
 // competitionFollowup, dataCompleteness) are internal-only alerts that log an
@@ -51,6 +56,7 @@ export class AgentRunnerService {
     private renewalStalledAgent: RenewalStalledAgentService,
     private competitionFollowupAgent: CompetitionFollowupAgentService,
     private dataCompletenessAgent: DataCompletenessAgentService,
+    private checklistAgent: SchoolAutomationService,
   ) {}
 
   // 8 AM in the business timezone — without timeZone, @Cron uses the
@@ -65,6 +71,7 @@ export class AgentRunnerService {
    * Failed agents report 0 and their error message under `errors`. */
   async runAll(): Promise<AgentRunResult> {
     const agents: Record<AgentName, { scan(): Promise<number> }> = {
+      checklist: this.checklistAgent,
       engagement: this.engagementAgent,
       renewal: this.renewalAgent,
       workshopReminder: this.workshopReminderAgent,

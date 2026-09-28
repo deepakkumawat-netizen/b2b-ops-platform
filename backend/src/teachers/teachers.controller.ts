@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { StaffAuthGuard } from '../common/guards/staff-auth.guard';
 import { CurrentStaff } from '../common/decorators/current-staff.decorator';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -7,19 +7,30 @@ import { assertSchoolAccessById } from '../common/scope';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
+import { SchoolAutomationService } from '../automation/school-automation.service';
 
 @Controller('schools/:schoolId/teachers')
 @UseGuards(StaffAuthGuard)
+@UseInterceptors(SyncChecklistInterceptor)
 export class TeachersController {
   constructor(
     private teachers: TeachersService,
     private prisma: PrismaService,
+    private automation: SchoolAutomationService,
   ) {}
 
   @Get()
   async list(@Param('schoolId') schoolId: string, @CurrentStaff() staff: StaffJwtPayload) {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
     return this.teachers.listForSchool(schoolId);
+  }
+
+  /** (Re)sends the school the teacher-details form link. */
+  @Post('request-details')
+  async requestDetails(@Param('schoolId') schoolId: string, @CurrentStaff() staff: StaffJwtPayload) {
+    await assertSchoolAccessById(this.prisma, staff, schoolId);
+    return { sent: await this.automation.sendTeacherDetailsRequest(schoolId) };
   }
 
   @Post()

@@ -63,6 +63,14 @@ services:
         sync: false
       - key: BREVO_FROM_NAME
         value: CodeVidhya B2B Ops
+      # Public URL used for links in emails (the teacher details form).
+      - key: APP_URL
+        value: https://b2b-ops-platform.onrender.com
+      # Who gets the "new school enrolled" email (comma-separated). Unset =
+      # every active Super Admin account. Demo/testing: Deepak only — the
+      # seeded Super Admin (admin@b2bops.dev) isn't a real inbox.
+      - key: ADMIN_ALERT_EMAILS
+        value: deepak.kumawat@codevidhya.com
       # Resend fallback — only used if Brevo isn't configured. Until
       # codevidhya.com is verified in Resend (needs Route 53 DNS records),
       # it only delivers to the email the Resend account signed up with.

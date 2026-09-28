@@ -13,6 +13,7 @@ const SchoolsListPage = lazy(() => import('./features/schools/SchoolsListPage').
 // who never adds a school (most visits) never downloads it.
 const NewSchoolPage = lazy(() => import('./features/schools/NewSchoolPage').then((m) => ({ default: m.NewSchoolPage })));
 const SchoolDetailPage = lazy(() => import('./features/schools/SchoolDetailPage').then((m) => ({ default: m.SchoolDetailPage })));
+const TeacherFormPage = lazy(() => import('./features/teacher-form/TeacherFormPage').then((m) => ({ default: m.TeacherFormPage })));
 const StaffPage = lazy(() => import('./features/staff/StaffPage').then((m) => ({ default: m.StaffPage })));
 const AgentSuggestionsPage = lazy(() =>
   import('./features/agent-suggestions/AgentSuggestionsPage').then((m) => ({ default: m.AgentSuggestionsPage })),
@@ -29,6 +30,8 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        {/* Public — schools open it from the teacher-details email, no login. */}
+        <Route path="/teacher-form/:schoolId/:token" element={<TeacherFormPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<StaffLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />

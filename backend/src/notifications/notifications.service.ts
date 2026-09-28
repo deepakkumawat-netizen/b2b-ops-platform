@@ -22,8 +22,11 @@ export class NotificationsService {
     templateKey: string;
     subject: string;
     body: string;
+    /** false for internal emails about a school (e.g. the admin
+     * new-enrollment alert) — those shouldn't come "from" its manager. */
+    fromAccountManager?: boolean;
   }): Promise<boolean> {
-    const { schoolId, recipient, templateKey, subject, body } = params;
+    const { schoolId, recipient, templateKey, subject, body, fromAccountManager = true } = params;
     if (!recipient) {
       await this.prisma.emailLog.create({
         data: { schoolId, recipient: '(none)', templateKey, subject, status: EmailStatus.SKIPPED, providerResponse: 'No recipient email on file' },
@@ -36,7 +39,8 @@ export class NotificationsService {
       });
       return false;
     }
-    const result = await this.mailer.sendMail(recipient, subject, body, await this.schoolSender(schoolId));
+    const sender = fromAccountManager ? await this.schoolSender(schoolId) : undefined;
+    const result = await this.mailer.sendMail(recipient, subject, body, sender);
     await this.prisma.emailLog.create({
       data: {
         schoolId,

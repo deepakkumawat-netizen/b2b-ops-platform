@@ -160,6 +160,8 @@ export type InfraDiagnostic = {
   recommendedSessionMix: string | null;
 } | null;
 
+export type TeacherFormRow = { name: string; phone: string; designation: string; gradeAssigned: string };
+
 export type Workshop = {
   id: string;
   schoolId: string;
@@ -264,6 +266,7 @@ export type RenewalReportRow = RenewalCycle & {
 };
 
 export type AgentName =
+  | 'checklist'
   | 'engagement'
   | 'renewal'
   | 'workshopReminder'
@@ -316,6 +319,14 @@ export const api = {
     }),
 
   listTeachers: (schoolId: string) => request<Teacher[]>(`/schools/${schoolId}/teachers`),
+  requestTeacherDetails: (schoolId: string) =>
+    request<{ sent: boolean }>(`/schools/${schoolId}/teachers/request-details`, { method: 'POST' }),
+
+  // Public teacher-details form (no login — the school opens it from the emailed link).
+  getTeacherForm: (schoolId: string, token: string) =>
+    request<{ schoolName: string; teachersOnFile: number }>(`/public/teacher-form/${schoolId}/${token}`),
+  submitTeacherForm: (schoolId: string, token: string, teachers: TeacherFormRow[]) =>
+    request<{ added: number }>(`/public/teacher-form/${schoolId}/${token}`, { method: 'POST', body: JSON.stringify({ teachers }) }),
   createTeacher: (schoolId: string, dto: Partial<Teacher>) =>
     request<Teacher>(`/schools/${schoolId}/teachers`, { method: 'POST', body: JSON.stringify(dto) }),
   updateTeacher: (schoolId: string, teacherId: string, dto: Partial<Teacher>) =>

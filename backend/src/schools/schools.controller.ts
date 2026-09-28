@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { StaffRole } from '@b2b-ops/shared';
 import { StaffAuthGuard } from '../common/guards/staff-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -8,9 +8,11 @@ import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { SchoolsService } from './schools.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
+import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
 
 @Controller('schools')
 @UseGuards(StaffAuthGuard, RolesGuard)
+@UseInterceptors(SyncChecklistInterceptor)
 export class SchoolsController {
   constructor(private schools: SchoolsService) {}
 

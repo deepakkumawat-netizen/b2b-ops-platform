@@ -20,6 +20,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
 import { ActivityModule } from './activity/activity.module';
+import { AutomationModule } from './automation/automation.module';
+import { TeacherFormModule } from './teacher-form/teacher-form.module';
 import { StaffModule } from './staff/staff.module';
 import { ReportsModule } from './reports/reports.module';
 
@@ -42,6 +44,8 @@ import { ReportsModule } from './reports/reports.module';
     }),
     PrismaModule,
     ActivityModule,
+    AutomationModule,
+    TeacherFormModule,
     AuthModule,
     SchoolsModule,
     PhaseTasksModule,

@@ -5,6 +5,7 @@ import { PhaseTasksService } from '../phase-tasks/phase-tasks.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { schoolScopeWhere, assertSchoolAccess } from '../common/scope';
 import { ActivityService } from '../activity/activity.service';
+import { SchoolAutomationService } from '../automation/school-automation.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 
@@ -14,6 +15,7 @@ export class SchoolsService {
     private prisma: PrismaService,
     private phaseTasks: PhaseTasksService,
     private activity: ActivityService,
+    private automation: SchoolAutomationService,
   ) {}
 
   async create(dto: CreateSchoolDto, staff: StaffJwtPayload) {
@@ -23,7 +25,10 @@ export class SchoolsService {
     });
     await this.phaseTasks.generateTasksForSchool(school.id);
     await this.activity.record(school.id, staff, 'School created', 'Sales handover recorded');
-    return school;
+    // Welcome email to the school, enrollment alert to admins, then tick
+    // whatever the handover form already proves (and advance past it).
+    await this.automation.onSchoolCreated(school.id, staff);
+    return (await this.prisma.school.findUnique({ where: { id: school.id } })) ?? school;
   }
 
   async findAll(staff: StaffJwtPayload) {
@@ -73,6 +78,11 @@ export class SchoolsService {
     if (changed.length > 0) {
       const labels = changed.map((key) => (key === 'assignedAccountManagerId' ? 'account manager' : key));
       await this.activity.record(id, staff, 'School details updated', `Changed: ${labels.join(', ')}`);
+    }
+    // The handover form had no owner email, so the welcome email never went
+    // out — send it now that there's somewhere to send it.
+    if (!school.ownerEmail && updated.ownerEmail) {
+      await this.automation.onOwnerEmailAdded(id);
     }
     return updated;
   }

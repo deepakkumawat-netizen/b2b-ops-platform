@@ -65,9 +65,12 @@ export function SchoolChecklistTab({ schoolId }: { schoolId: string }) {
                     />
                     {t.template.label}
                   </label>
-                  {t.completedByStaff && (
-                    <span className="muted small">
-                      ✓ {t.completedByStaff.name} {t.completedAt ? `on ${new Date(t.completedAt).toLocaleDateString()}` : ''}
+                  {t.status === PhaseTaskStatus.DONE && (t.completedByStaff || t.completedAt) && (
+                    // No completedByStaff on a DONE task = the checklist agent ticked it; its note says why.
+                    <span className="muted small" title={t.completedByStaff ? undefined : (t.notes ?? undefined)}>
+                      ✓ {t.completedByStaff?.name ?? 'Agent'}{' '}
+                      {t.completedAt ? `on ${new Date(t.completedAt).toLocaleDateString()}` : ''}
+                      {!t.completedByStaff && t.notes ? ` — ${t.notes.replace(/^Auto-completed: /, '')}` : ''}
                     </span>
                   )}
                 </li>

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { StaffAuthGuard } from '../common/guards/staff-auth.guard';
 import { CurrentStaff } from '../common/decorators/current-staff.decorator';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -6,9 +6,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { assertSchoolAccessById } from '../common/scope';
 import { CompetitionsService } from './competitions.service';
 import { CreateCompetitionDto } from './dto/create-competition.dto';
+import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
 
 @Controller('schools/:schoolId/competitions')
 @UseGuards(StaffAuthGuard)
+@UseInterceptors(SyncChecklistInterceptor)
 export class CompetitionsController {
   constructor(
     private competitions: CompetitionsService,

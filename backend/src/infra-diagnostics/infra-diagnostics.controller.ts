@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, UseGuards, UseInterceptors } from '@nestjs/common';
 import { StaffAuthGuard } from '../common/guards/staff-auth.guard';
 import { CurrentStaff } from '../common/decorators/current-staff.decorator';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
@@ -6,9 +6,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { assertSchoolAccessById } from '../common/scope';
 import { InfraDiagnosticsService } from './infra-diagnostics.service';
 import { UpsertInfraDiagnosticDto } from './dto/upsert-infra-diagnostic.dto';
+import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
 
 @Controller('schools/:schoolId/infra-diagnostic')
 @UseGuards(StaffAuthGuard)
+@UseInterceptors(SyncChecklistInterceptor)
 export class InfraDiagnosticsController {
   constructor(
     private infraDiagnostics: InfraDiagnosticsService,

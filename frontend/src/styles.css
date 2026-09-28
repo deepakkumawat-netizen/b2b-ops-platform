@@ -788,6 +788,52 @@ a:hover {
   justify-content: center;
   background: radial-gradient(circle at 20% 20%, #eef2ff 0%, var(--bg) 55%);
 }
+.public-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: 16px;
+  padding: 32px;
+  width: min(820px, calc(100vw - 32px));
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.public-form h1 {
+  margin: 0;
+}
+.public-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.public-form-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.public-form-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .public-form-row {
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+}
+.public-form-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.public-form-success p {
+  margin: 4px 0 0;
+}
 .auth-form {
   background: var(--surface);
   border: 1px solid var(--border);
