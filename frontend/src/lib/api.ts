@@ -230,7 +230,18 @@ export type Dashboard = {
 export type AgentSuggestion = {
   id: string;
   schoolId: string;
-  school: { id: string; name: string };
+  school: {
+    id: string;
+    name: string;
+    city: string | null;
+    state: string | null;
+    ownerName: string | null;
+    ownerDesignation: string | null;
+    ownerEmail: string | null;
+    productProgram: string | null;
+    currentPhase: SchoolLifecyclePhase;
+    assignedAccountManager: { name: string } | null;
+  };
   agentKey: AgentKey;
   suggestionType: SuggestionType;
   draftSubject: string;

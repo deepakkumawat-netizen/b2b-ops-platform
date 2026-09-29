@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EngagementService } from '../../engagement/engagement.service';
 import { AiService } from '../ai.service';
 import { AgentSuggestionsService } from '../agent-suggestions.service';
+import { fillPlaceholders, SCHOOL_CONTEXT_SELECT, SchoolContext, schoolFactsForPrompt } from '../school-context';
 
 // Watches for schools overdue on the SOP's monthly-visit/weekly-call cadence
 // (SOP Phase 8.1/8.2) and drafts a check-in nudge — the most repetitive
@@ -22,7 +23,7 @@ export class EngagementAgentService {
   async scan(): Promise<number> {
     const schools = await this.prisma.school.findMany({
       where: { status: SchoolStatus.ACTIVE },
-      select: { id: true, name: true, currentPhase: true, ownerName: true },
+      select: SCHOOL_CONTEXT_SELECT,
     });
     const overdue = await this.engagement.getOverdueStatusForSchools(schools.map((s) => s.id));
 
@@ -41,7 +42,7 @@ export class EngagementAgentService {
         schoolId: school.id,
         agentKey: AgentKey.ENGAGEMENT,
         suggestionType: SuggestionType.FOLLOWUP_EMAIL,
-        draft,
+        draft: fillPlaceholders(draft, school),
       });
       if (suggestion) created += 1;
     }
@@ -49,7 +50,7 @@ export class EngagementAgentService {
   }
 
   private buildPrompt(
-    school: { name: string; currentPhase: string; ownerName: string | null },
+    school: SchoolContext,
     status: { lastVisitDate: Date | null; visitOverdue: boolean; lastCallDate: Date | null; callOverdue: boolean },
   ): string {
     const gaps: string[] = [];
@@ -64,7 +65,8 @@ export class EngagementAgentService {
       `"${school.name}" (contact: ${school.ownerName ?? 'the school owner/coordinator'}), currently in the ` +
       `"${school.currentPhase.replace(/_/g, ' ')}" phase of onboarding. The account has fallen behind on our ` +
       `own engagement cadence: ${gaps.join(' and ')}. Draft a brief, friendly email proposing a quick call or ` +
-      `visit to check in, without sounding like an apology or admitting internal process failure.`
+      `visit to check in, without sounding like an apology or admitting internal process failure.` +
+      schoolFactsForPrompt(school)
     );
   }
 }

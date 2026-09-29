@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SuggestionStatus } from '@b2b-ops/shared';
+import { SCHOOL_LIFECYCLE_PHASE_LABELS, SuggestionStatus } from '@b2b-ops/shared';
 import { AgentSuggestion, api, staffSession } from '../../lib/api';
 import { EmptyState } from '../../components/EmptyState';
 import { SparkleIcon } from '../../components/icons';
@@ -22,6 +22,32 @@ const STATUS_LABEL: Record<string, string> = {
   [SuggestionStatus.AUTO_SENT]: 'Auto-sent',
 };
 
+const formatDate = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+// Who the draft goes to and which school it's about, so the reviewer can
+// check it without opening the school page.
+function SchoolFacts({ school }: { school: AgentSuggestion['school'] }) {
+  const location = [school.city, school.state].filter(Boolean).join(', ');
+  const contact = [school.ownerName, school.ownerDesignation].filter(Boolean).join(', ');
+  const facts: Array<[string, string | null]> = [
+    ['To', school.ownerEmail ? `${contact || 'School'} <${school.ownerEmail}>` : null],
+    ['Location', location || null],
+    ['Program', school.productProgram],
+    ['Phase', SCHOOL_LIFECYCLE_PHASE_LABELS[school.currentPhase] ?? school.currentPhase],
+    ['Account manager', school.assignedAccountManager?.name ?? null],
+  ];
+  return (
+    <dl className="suggestion-facts">
+      {facts.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd className={value ? undefined : 'muted'}>{value ?? (label === 'To' ? 'No owner email — add it in Edit school' : '—')}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function AgentSuggestionsPage() {
   const isSuperAdmin = staffSession.get()?.role === 'SUPER_ADMIN';
   const [suggestions, setSuggestions] = useState<AgentSuggestion[]>([]);
@@ -30,8 +56,8 @@ export function AgentSuggestionsPage() {
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, { draftSubject: string; draftBody: string }>>({});
-  const [sortKey, setSortKey] = useState<'school' | 'agent' | 'type' | 'status'>('school');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortKey, setSortKey] = useState<'date' | 'school' | 'agent' | 'type' | 'status'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   function reload() {
     setLoading(true);
@@ -121,6 +147,7 @@ export function AgentSuggestionsPage() {
   const decided = suggestions.filter((s) => s.status !== SuggestionStatus.PENDING);
 
   const sortAccessor: Record<typeof sortKey, (s: AgentSuggestion) => string> = {
+    date: (s) => s.reviewedAt ?? s.createdAt,
     school: (s) => s.school.name.toLowerCase(),
     agent: (s) => s.agentKey.toLowerCase(),
     type: (s) => s.suggestionType,
@@ -175,6 +202,8 @@ export function AgentSuggestionsPage() {
                 </strong>
                 <span className="badge">{s.suggestionType.replace(/_/g, ' ')}</span>
               </div>
+              <p className="muted small" style={{ marginTop: 4 }}>Drafted {formatDate(s.createdAt)}</p>
+              <SchoolFacts school={s.school} />
               <p className="muted small">{s.reasoning}</p>
               <label>
                 Subject
@@ -209,6 +238,9 @@ export function AgentSuggestionsPage() {
         <table className="data-table">
           <thead>
             <tr>
+              <th className="sortable" onClick={() => toggleSort('date')}>
+                Date{sortKey === 'date' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
               <th className="sortable" onClick={() => toggleSort('school')}>
                 School{sortKey === 'school' && <span className="sort-arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
               </th>
@@ -225,10 +257,11 @@ export function AgentSuggestionsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <SkeletonTableRows rows={4} columns={4} />
+              <SkeletonTableRows rows={4} columns={5} />
             ) : (
               sortedDecided.map((s) => (
                 <tr key={s.id}>
+                  <td className="muted small">{formatDate(s.reviewedAt ?? s.createdAt)}</td>
                   <td>
                     <Link to={`/schools/${s.schoolId}`}>{s.school.name}</Link>
                   </td>

@@ -19,7 +19,22 @@ export class AgentSuggestionsService {
   list(staff: StaffJwtPayload) {
     return this.prisma.agentSuggestion.findMany({
       where: { school: schoolScopeWhere(staff) },
-      include: { school: { select: { id: true, name: true } } },
+      include: {
+        school: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            state: true,
+            ownerName: true,
+            ownerDesignation: true,
+            ownerEmail: true,
+            productProgram: true,
+            currentPhase: true,
+            assignedAccountManager: { select: { name: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

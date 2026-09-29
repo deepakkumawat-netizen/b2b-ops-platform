@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RenewalsService } from '../../renewals/renewals.service';
 import { AiService } from '../ai.service';
 import { AgentSuggestionsService } from '../agent-suggestions.service';
+import { fillPlaceholders, SCHOOL_CONTEXT_SELECT, SchoolContext, schoolFactsForPrompt } from '../school-context';
 
 // Compiles the SOP's required "summary of the year's activities" (Phase 10
 // key note) and drafts a renewal pitch for any school that's either reached
@@ -28,7 +29,7 @@ export class RenewalAgentService {
           { renewalCycles: { some: { renewalStatus: { in: [RenewalStatus.PENDING, RenewalStatus.APPROACHED] } } } },
         ],
       },
-      select: { id: true, name: true, ownerName: true },
+      select: SCHOOL_CONTEXT_SELECT,
     });
 
     let created = 0;
@@ -44,7 +45,7 @@ export class RenewalAgentService {
         schoolId: school.id,
         agentKey: AgentKey.RENEWAL,
         suggestionType: SuggestionType.RENEWAL_PITCH,
-        draft,
+        draft: fillPlaceholders(draft, school),
       });
       if (suggestion) created += 1;
     }
@@ -52,7 +53,7 @@ export class RenewalAgentService {
   }
 
   private buildPrompt(
-    school: { name: string; ownerName: string | null },
+    school: SchoolContext,
     summary: {
       workshopsCompleted: number;
       workshopsTotal: number;
@@ -70,7 +71,8 @@ export class RenewalAgentService {
       `${summary.competitionsCount} competitions run (${summary.certificatesIssuedCount} with certificates issued), ` +
       `${summary.monthlyVisitsCount} on-site visits and ${summary.weeklyCallsCount} check-in calls conducted. ` +
       `Warmly propose continuing the partnership for another year, backed by this track record, and suggest a call ` +
-      `to finalize renewal terms.`
+      `to finalize renewal terms.` +
+      schoolFactsForPrompt(school)
     );
   }
 }
