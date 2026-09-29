@@ -191,7 +191,7 @@ model Student {
 
 // Images kept per school — its own logo and the co-branded partnership logo
 // (SOP Phase 4). In the database rather than on disk because Render's free
-// plan wipes the disk on every deploy; images are resized to ~600px before
+// plan wipes the disk on every deploy; images are resized to at most 1200px before
 // upload, so rows stay small. One row per (school, kind).
 model SchoolAsset {
   id        String   @id @default(cuid())

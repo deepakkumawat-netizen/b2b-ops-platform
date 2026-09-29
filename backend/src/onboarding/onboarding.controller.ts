@@ -18,7 +18,7 @@ export class WhatsappLinkDto {
 
 export class ImageUploadDto {
   @IsString()
-  @MaxLength(2_100_000) // ~1.5 MB of image once base64-encoded
+  @MaxLength(7_100_000) // ~5 MB of image once base64-encoded
   dataUrl!: string;
 }
 

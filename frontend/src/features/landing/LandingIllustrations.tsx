@@ -108,7 +108,7 @@ export function AiDraftIllustration() {
         </div>
         <b>Quick check-in this week?</b>
         <p>
-          Hi Mrs. Sharma, it’s been a few weeks since our last visit — we’d love to drop by and see how the
+          Hi Mrs. Sharma, it’s been a few weeks since our last visit. We’d love to drop by and see how the
           coding lab sessions are going…
         </p>
         <small className="ill-ai-why">Why: no monthly visit logged in 34 days.</small>

@@ -35,12 +35,12 @@ export class SubmitTeacherFormDto {
 
 export class PublicLogoUploadDto {
   @IsString()
-  @MaxLength(2_100_000) // ~1.5 MB of image once base64-encoded
+  @MaxLength(7_100_000) // ~5 MB of image once base64-encoded
   logo!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(2_100_000)
+  @MaxLength(7_100_000)
   cobranded?: string;
 }
 

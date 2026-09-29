@@ -2,7 +2,8 @@
 // library: uploads are shrunk before sending, and the co-branded
 // partnership logo (SOP Phase 4) is drawn on a canvas from the school's logo.
 
-const MAX_UPLOAD_CHARS = 1_900_000; // stays under the server's ~1.5 MB image cap once base64-encoded
+export const MAX_LOGO_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — the largest file a school can pick
+const MAX_UPLOAD_CHARS = 6_900_000; // stays under the server's 5 MB image cap once base64-encoded
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -14,8 +15,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /** Shrinks an uploaded image to fit `max`×`max` and returns it as a data URL. */
-export async function resizeImageFile(file: File, max = 600): Promise<string> {
+export async function resizeImageFile(file: File, max = 1200): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Please choose an image file (PNG or JPG).');
+  if (file.size > MAX_LOGO_FILE_BYTES) throw new Error('That image is over 5 MB. Please choose a smaller one.');
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await loadImage(objectUrl);

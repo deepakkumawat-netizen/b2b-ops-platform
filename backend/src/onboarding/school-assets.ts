@@ -6,7 +6,7 @@ export const ASSET_KINDS = ['LOGO', 'COBRANDED_LOGO'] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-export const MAX_ASSET_BYTES = 1_500_000;
+export const MAX_ASSET_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export function isAssetKind(kind: string): kind is AssetKind {
   return (ASSET_KINDS as readonly string[]).includes(kind);
@@ -19,7 +19,7 @@ export function parseImageDataUrl(dataUrl: string): { mimeType: string; data: Bu
   }
   const data = Buffer.from(match[2], 'base64');
   if (data.length === 0 || data.length > MAX_ASSET_BYTES) {
-    throw new BadRequestException('Image is too large — please use one under 1.5 MB');
+    throw new BadRequestException('Image is too large. Please use one under 5 MB.');
   }
   return { mimeType: match[1], data };
 }

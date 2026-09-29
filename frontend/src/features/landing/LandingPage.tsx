@@ -11,7 +11,7 @@ import {
 const FEATURES = [
   {
     eyebrow: 'Guided onboarding',
-    title: 'Every school follows the same SOP — step by step',
+    title: 'Every school follows the same SOP, step by step',
     text: 'Each new school gets its own checklist for all 10 phases, with every task tagged to the team that owns it. Phases advance in order, so nothing is skipped or forgotten.',
     points: ['Auto-generated checklist per school', 'Clear owner for every task', 'Progress visible at a glance'],
     Illustration: ChecklistIllustration,
@@ -66,7 +66,7 @@ export function LandingPage() {
             Onboard every partner school <span>the same way, every time.</span>
           </h1>
           <p className="landing-hero-subtitle">
-            One shared workspace that takes each school from sales handover to annual renewal — with checklists,
+            One shared workspace that takes each school from sales handover to annual renewal, with checklists,
             workshop tracking, and AI follow-ups for Sales, Account Management, Operations, and Training.
           </p>
           <div className="landing-hero-actions">

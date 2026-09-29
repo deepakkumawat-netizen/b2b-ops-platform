@@ -12,7 +12,7 @@ describe('parseImageDataUrl', () => {
   it('rejects non-images and oversized files', () => {
     expect(() => parseImageDataUrl('data:text/html;base64,PGgxPg==')).toThrow(BadRequestException);
     expect(() => parseImageDataUrl('https://example.com/logo.png')).toThrow(BadRequestException);
-    const big = Buffer.alloc(1_600_000).toString('base64');
+    const big = Buffer.alloc(5_300_000).toString('base64');
     expect(() => parseImageDataUrl(`data:image/jpeg;base64,${big}`)).toThrow(/too large/);
   });
 });

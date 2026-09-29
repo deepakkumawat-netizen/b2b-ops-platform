@@ -274,6 +274,7 @@ function Part({ n, title, done, doneText, children }: { n: number; title: string
 function LogoPart({ info, schoolId, token, onSaved }: { info: SchoolDetailsInfo; schoolId: string; token: string; onSaved: () => Promise<unknown> }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const [errorText, setErrorText] = useState('');
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -286,7 +287,8 @@ function LogoPart({ info, schoolId, token, onSaved }: { info: SchoolDetailsInfo;
       await api.uploadTeacherFormLogo(schoolId, token, logo, cobranded);
       await onSaved();
       setStatus('done');
-    } catch {
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : '');
       setStatus('error');
     }
   };
@@ -297,13 +299,13 @@ function LogoPart({ info, schoolId, token, onSaved }: { info: SchoolDetailsInfo;
           {preview ? <img src={preview} alt="Your school logo" /> : <span className="muted small">{info.hasLogo ? '✓ Received' : 'Logo'}</span>}
         </div>
         <div>
-          <p className="muted small">For our co-branded partnership logo. PNG or JPG — it uploads as soon as you choose it.</p>
+          <p className="muted small">For our co-branded partnership logo. PNG or JPG, up to 5 MB. It uploads as soon as you choose it.</p>
           <label className="button-like">
             {status === 'uploading' ? 'Uploading…' : info.hasLogo ? 'Upload a new logo' : 'Choose logo'}
             <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} disabled={status === 'uploading'} hidden />
           </label>
           {status === 'done' && <p className="success small">Thank you — logo received.</p>}
-          {status === 'error' && <p className="error small">Couldn’t upload that image — please try a PNG or JPG under 1.5 MB.</p>}
+          {status === 'error' && <p className="error small">{errorText || 'Couldn’t upload that image. Please try a PNG or JPG under 5 MB.'}</p>}
         </div>
       </div>
     </Part>

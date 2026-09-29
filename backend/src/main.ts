@@ -1,4 +1,5 @@
 import helmet from 'helmet';
+import { json } from 'express';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -11,8 +12,11 @@ async function bootstrap() {
   // one shared limit for the whole team, and req.secure is always false.
   app.set('trust proxy', 1);
   app.use(helmet());
-  // Logo uploads come as base64 JSON (resized in the browser first); the
-  // 100 KB default would reject most of them.
+  // Logo uploads come as base64 JSON (images up to 5 MB), so only their two
+  // routes get a big body limit; registered first, it handles those requests
+  // and the general parser below skips them. Everything else stays at 3 MB
+  // (enough for 500 students in one submit).
+  app.use(['/api/public/teacher-form/:schoolId/:token/logo', '/api/schools/:schoolId/onboarding/assets/:kind'], json({ limit: '15mb' }));
   app.useBodyParser('json', { limit: '3mb' });
   const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
     .split(',')
