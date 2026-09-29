@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useStaffUser } from '../../lib/api';
 import { PHASE_LABELS, PHASE_ORDER } from '../../lib/phases';
 import {
@@ -40,8 +40,9 @@ const ROLES = [
 ];
 
 export function LandingPage() {
+  // Always shown first — even to someone already signed in, who gets a
+  // "Go to dashboard" button in place of Sign in.
   const me = useStaffUser();
-  if (me) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="landing">
@@ -50,9 +51,9 @@ export function LandingPage() {
         <nav className="landing-nav-links">
           <a className="landing-anchor" href="#how">How it works</a>
           <a className="landing-anchor" href="#features">Features</a>
-          <Link to="/login">
+          <Link to={me ? '/dashboard' : '/login'}>
             <button type="button" className="secondary">
-              Sign in
+              {me ? 'Go to dashboard' : 'Sign in'}
             </button>
           </Link>
         </nav>
@@ -69,14 +70,22 @@ export function LandingPage() {
             workshop tracking, and AI follow-ups for Sales, Account Management, Operations, and Training.
           </p>
           <div className="landing-hero-actions">
-            <Link to="/signup">
-              <button type="button">Get started</button>
-            </Link>
-            <Link to="/login">
-              <button type="button" className="secondary">
-                Sign in
-              </button>
-            </Link>
+            {me ? (
+              <Link to="/dashboard">
+                <button type="button">Go to dashboard</button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/signup">
+                  <button type="button">Get started</button>
+                </Link>
+                <Link to="/login">
+                  <button type="button" className="secondary">
+                    Sign in
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
         <div className="landing-hero-visual">
@@ -139,14 +148,22 @@ export function LandingPage() {
         <h2>Ready to bring your schools into one place?</h2>
         <p>Create your staff account and start tracking in minutes.</p>
         <div className="landing-hero-actions">
-          <Link to="/signup">
-            <button type="button">Create an account</button>
-          </Link>
-          <Link to="/login">
-            <button type="button" className="secondary">
-              Sign in
-            </button>
-          </Link>
+          {me ? (
+            <Link to="/dashboard">
+              <button type="button">Go to dashboard</button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/signup">
+                <button type="button">Create an account</button>
+              </Link>
+              <Link to="/login">
+                <button type="button" className="secondary">
+                  Sign in
+                </button>
+              </Link>
+            </>
+          )}
         </div>
       </section>
 

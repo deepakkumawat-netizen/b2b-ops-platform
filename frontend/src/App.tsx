@@ -42,7 +42,7 @@ export function App() {
             <Route path="/staff" element={<StaffPage />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
