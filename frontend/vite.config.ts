@@ -13,6 +13,13 @@ export default defineConfig({
   resolve: {
     preserveSymlinks: true,
   },
+  build: {
+    // The New School page's chunk (~530 kB, ~120 kB gzipped) is the phone
+    // input's number metadata + bundled flag icons + the country list —
+    // lazy-loaded with that route only. The big world state/city lists are
+    // served by /api/geo instead. Warn if anything grows past this.
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     port: 5173,
     proxy: {

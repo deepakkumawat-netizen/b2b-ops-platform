@@ -375,6 +375,11 @@ export const api = {
       body: JSON.stringify(dto),
     }),
 
+  listStates: (countryCode: string) =>
+    request<Array<{ isoCode: string; name: string }>>(`/geo/states/${encodeURIComponent(countryCode)}`),
+  listCities: (countryCode: string, stateCode: string) =>
+    request<string[]>(`/geo/cities/${encodeURIComponent(countryCode)}/${encodeURIComponent(stateCode)}`),
+
   // Onboarding Setup (WhatsApp group + logos).
   getOnboarding: (schoolId: string) => request<OnboardingOverview>(`/schools/${schoolId}/onboarding`),
   setWhatsappLink: (schoolId: string, link: string) =>

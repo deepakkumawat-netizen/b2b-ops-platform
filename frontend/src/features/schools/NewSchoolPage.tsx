@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Country, State, City } from 'country-state-city';
+import { Country } from 'country-state-city';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import flags from 'react-phone-number-input/flags';
 import 'react-phone-number-input/style.css';
@@ -43,11 +43,33 @@ export function NewSchoolPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const states = useMemo(() => State.getStatesOfCountry(form.countryCode), [form.countryCode]);
-  const districts = useMemo(
-    () => (form.stateCode ? City.getCitiesOfState(form.countryCode, form.stateCode) : []),
-    [form.countryCode, form.stateCode],
-  );
+  // States and cities are fetched as they're picked — the world lists
+  // (~0.5 MB + ~8 MB) stay on the server instead of in this page's bundle.
+  const [states, setStates] = useState<Array<{ isoCode: string; name: string }>>([]);
+  useEffect(() => {
+    setStates([]);
+    let cancelled = false;
+    api
+      .listStates(form.countryCode)
+      .then((list) => !cancelled && setStates(list))
+      .catch(() => undefined); // dropdown just stays empty
+    return () => {
+      cancelled = true;
+    };
+  }, [form.countryCode]);
+  const [districts, setDistricts] = useState<string[]>([]);
+  useEffect(() => {
+    setDistricts([]);
+    if (!form.stateCode) return;
+    let cancelled = false;
+    api
+      .listCities(form.countryCode, form.stateCode)
+      .then((names) => !cancelled && setDistricts(names))
+      .catch(() => undefined); // dropdown just stays empty
+    return () => {
+      cancelled = true;
+    };
+  }, [form.countryCode, form.stateCode]);
 
   function onCountryChange(isoCode: string) {
     setForm((f) => ({ ...f, countryCode: isoCode, stateCode: '', city: '' }));
@@ -133,9 +155,9 @@ export function NewSchoolPage() {
             disabled={!districts.length}
           >
             <option value="">—</option>
-            {districts.map((d) => (
-              <option key={`${d.name}-${d.latitude}`} value={d.name}>
-                {d.name}
+            {districts.map((name) => (
+              <option key={name} value={name}>
+                {name}
               </option>
             ))}
           </select>

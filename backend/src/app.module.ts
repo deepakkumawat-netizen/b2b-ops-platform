@@ -26,6 +26,7 @@ import { StaffModule } from './staff/staff.module';
 import { ReportsModule } from './reports/reports.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { StudentsModule } from './students/students.module';
+import { GeoModule } from './geo/geo.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { StudentsModule } from './students/students.module';
     TeacherFormModule,
     OnboardingModule,
     StudentsModule,
+    GeoModule,
     AuthModule,
     SchoolsModule,
     PhaseTasksModule,
