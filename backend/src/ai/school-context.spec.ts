@@ -29,7 +29,7 @@ describe('school-context', () => {
     const facts = schoolFactsForPrompt(school, now);
     expect(facts).toContain('Sunrise Public School (Jaipur, Rajasthan)');
     expect(facts).toContain('Mrs. Sharma, Principal');
-    expect(facts).toContain('Sign off as Aditi Rao, Account Manager, CodeVidhya');
+    expect(facts).toContain('Sign off as Aditi Rao, Account Manager, codevidhya');
     expect(facts).toContain('Monday, 5 October 2026');
     expect(facts).toMatch(/Never write placeholders/);
   });

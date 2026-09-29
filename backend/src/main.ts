@@ -11,6 +11,9 @@ async function bootstrap() {
   // one shared limit for the whole team, and req.secure is always false.
   app.set('trust proxy', 1);
   app.use(helmet());
+  // Logo uploads come as base64 JSON (resized in the browser first); the
+  // 100 KB default would reject most of them.
+  app.useBodyParser('json', { limit: '3mb' });
   const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())

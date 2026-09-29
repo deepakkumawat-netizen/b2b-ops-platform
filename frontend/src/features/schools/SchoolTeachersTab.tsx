@@ -36,13 +36,31 @@ export function SchoolTeachersTab({ schoolId }: { schoolId: string }) {
     }
   }
 
+  // The same link the school gets by email — to check what they see, or to
+  // paste into the school's WhatsApp group.
+  async function openFormLink(copy: boolean) {
+    setError(null);
+    setNotice(null);
+    try {
+      const { url } = await api.getSchoolFormLink(schoolId);
+      if (!copy) {
+        window.open(url, '_blank', 'noopener');
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setNotice('Link copied — paste it anywhere, e.g. the school’s WhatsApp group.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not get the link');
+    }
+  }
+
   async function requestDetails() {
     setError(null);
     setNotice(null);
     setRequesting(true);
     try {
       const { sent } = await api.requestTeacherDetails(schoolId);
-      if (sent) setNotice('Emailed the school a link to fill in their teacher details. What they submit appears here automatically.');
+      if (sent) setNotice('Emailed the school its school details link (teachers, students, logo, lab, orientation date). What they fill in appears in the tool automatically.');
       else setError("The form email wasn't sent — check the school has an owner email (Edit school), then see Activity → Emails.");
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the form');
@@ -59,9 +77,17 @@ export function SchoolTeachersTab({ schoolId }: { schoolId: string }) {
         <p className="muted small" style={{ margin: 0 }}>
           Click anywhere on a row to toggle LMS credential status.
         </p>
-        <button className="secondary" onClick={requestDetails} disabled={requesting}>
-          {requesting ? 'Sending…' : 'Email teacher details form to school'}
-        </button>
+        <div className="button-row">
+          <button className="secondary" onClick={() => openFormLink(false)}>
+            Open school page
+          </button>
+          <button className="secondary" onClick={() => openFormLink(true)}>
+            Copy link
+          </button>
+          <button className="secondary" onClick={requestDetails} disabled={requesting}>
+            {requesting ? 'Sending…' : 'Email school details link to school'}
+          </button>
+        </div>
       </div>
 
       {teachers.length === 0 ? (

@@ -8,3 +8,5 @@ build/
 *.tsbuildinfo
 .DS_Store
 /backend/generated/
+
+.claude/settings.local.json

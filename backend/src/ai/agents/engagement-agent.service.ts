@@ -61,7 +61,7 @@ export class EngagementAgentService {
       gaps.push(status.lastCallDate ? `no weekly check-in call since ${status.lastCallDate.toDateString()}` : 'no weekly check-in call has ever been logged');
     }
     return (
-      `You are drafting a short, warm check-in email from a CodeVidhya Account Manager to a partner school, ` +
+      `You are drafting a short, warm check-in email from a codevidhya Account Manager to a partner school, ` +
       `"${school.name}" (contact: ${school.ownerName ?? 'the school owner/coordinator'}), currently in the ` +
       `"${school.currentPhase.replace(/_/g, ' ')}" phase of onboarding. The account has fallen behind on our ` +
       `own engagement cadence: ${gaps.join(' and ')}. Draft a brief, friendly email proposing a quick call or ` +

@@ -1,6 +1,6 @@
 # B2B Ops Platform
 
-School onboarding & lifecycle tracker for CodeVidhya's B2B Operations team — implements the
+School onboarding & lifecycle tracker for codevidhya's B2B Operations team — implements the
 10-phase SOP (Sales handover → Welcome → Orientation → Onboarding setup → Data collection/LMS →
 Infra diagnostic → Teacher training → Ongoing engagement → Competitions → Annual renewal) as a
 lifecycle tracker with per-phase checklists, a dashboard, and real email touchpoints (welcome

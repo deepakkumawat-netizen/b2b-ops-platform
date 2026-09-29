@@ -9,6 +9,7 @@ import { StalePhaseAgentService } from './agents/stale-phase-agent.service';
 import { RenewalStalledAgentService } from './agents/renewal-stalled-agent.service';
 import { CompetitionFollowupAgentService } from './agents/competition-followup-agent.service';
 import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
+import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
 import { SchoolAutomationService } from '../automation/school-automation.service';
 import { APP_TIMEZONE } from '../common/time';
 
@@ -24,6 +25,7 @@ export const AGENT_NAMES = [
   'renewalStalled',
   'competitionFollowup',
   'dataCompleteness',
+  'schoolDetailsReminder',
 ] as const;
 export type AgentName = (typeof AGENT_NAMES)[number];
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
@@ -38,7 +40,7 @@ export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Recor
 // The checklist agent (SchoolAutomationService) ticks tasks the data proves
 // and advances phases — a safety net for its per-request sync; it never
 // emails. Two agents (engagement, renewal) draft content a human approves. The rest
-// act fully autonomously — one (workshopFeedbackNag) is school-facing like
+// act fully autonomously — two (workshopFeedbackNag, schoolDetailsReminder) are school-facing like
 // workshopReminder/renewalCycleOpener; four more (stalePhase, renewalStalled,
 // competitionFollowup, dataCompleteness) are internal-only alerts that log an
 // audit row but never email anyone — see each agent's own file.
@@ -56,6 +58,7 @@ export class AgentRunnerService {
     private renewalStalledAgent: RenewalStalledAgentService,
     private competitionFollowupAgent: CompetitionFollowupAgentService,
     private dataCompletenessAgent: DataCompletenessAgentService,
+    private schoolDetailsReminderAgent: SchoolDetailsReminderAgentService,
     private checklistAgent: SchoolAutomationService,
   ) {}
 
@@ -81,6 +84,7 @@ export class AgentRunnerService {
       renewalStalled: this.renewalStalledAgent,
       competitionFollowup: this.competitionFollowupAgent,
       dataCompleteness: this.dataCompletenessAgent,
+      schoolDetailsReminder: this.schoolDetailsReminderAgent,
     };
 
     const counts = {} as Record<AgentName, number>;

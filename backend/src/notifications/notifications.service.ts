@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EmailStatus } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailerService, MailSender } from './mailer.service';
+import { MailButton } from './email-html';
 
 // Every touchpoint email the SOP calls for (welcome email, workshop
 // confirmation/reminder/completion) goes through here, never MailerService
@@ -25,8 +26,10 @@ export class NotificationsService {
     /** false for internal emails about a school (e.g. the admin
      * new-enrollment alert) — those shouldn't come "from" its manager. */
     fromAccountManager?: boolean;
+    /** Shown as a big button in the HTML version of the email. */
+    button?: MailButton;
   }): Promise<boolean> {
-    const { schoolId, recipient, templateKey, subject, body, fromAccountManager = true } = params;
+    const { schoolId, recipient, templateKey, subject, body, fromAccountManager = true, button } = params;
     if (!recipient) {
       await this.prisma.emailLog.create({
         data: { schoolId, recipient: '(none)', templateKey, subject, status: EmailStatus.SKIPPED, providerResponse: 'No recipient email on file' },
@@ -40,7 +43,7 @@ export class NotificationsService {
       return false;
     }
     const sender = fromAccountManager ? await this.schoolSender(schoolId) : undefined;
-    const result = await this.mailer.sendMail(recipient, subject, body, sender);
+    const result = await this.mailer.sendMail(recipient, subject, body, sender, button);
     await this.prisma.emailLog.create({
       data: {
         schoolId,

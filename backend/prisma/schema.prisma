@@ -91,6 +91,12 @@ model School {
   trainingMode             TrainingMode?
   specialCommitments       String?
   totalStudents            Int?
+  // Invite link of the school's official WhatsApp group (SOP Phase 4) —
+  // saving it is the evidence for "WhatsApp group created".
+  whatsappGroupLink        String?
+  // Picked by the school on its school details page (SOP Phase 3).
+  orientationPreferredDate DateTime?
+  orientationNote          String?
   currentPhase             SchoolLifecyclePhase @default(SALES_HANDOVER)
   status                   SchoolStatus         @default(ACTIVE)
   assignedAccountManagerId String?
@@ -110,6 +116,8 @@ model School {
   emailLogs         EmailLog[]
   agentSuggestions  AgentSuggestion[]
   activities        SchoolActivity[]
+  assets            SchoolAsset[]
+  students          Student[]
 }
 
 // ── Phase-task checklist engine ──────────────────────────────────────────
@@ -161,7 +169,41 @@ model Teacher {
   gradeAssigned          String?
   lmsCredentialGenerated Boolean   @default(false)
   trainedAt              DateTime?
+  // Set when the account manager sends this teacher the WhatsApp group invite.
+  whatsappInvitedAt      DateTime?
   createdAt              DateTime  @default(now())
+}
+
+// Filled in by the school on its school details page (SOP Phase 5 "Student
+// details collected"), or pasted from its Excel sheet.
+model Student {
+  id                     String   @id @default(cuid())
+  schoolId               String
+  school                 School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name                   String
+  grade                  String?
+  section                String?
+  lmsCredentialGenerated Boolean  @default(false)
+  createdAt              DateTime @default(now())
+
+  @@index([schoolId])
+}
+
+// Images kept per school — its own logo and the co-branded partnership logo
+// (SOP Phase 4). In the database rather than on disk because Render's free
+// plan wipes the disk on every deploy; images are resized to ~600px before
+// upload, so rows stay small. One row per (school, kind).
+model SchoolAsset {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  kind      String // 'LOGO' | 'COBRANDED_LOGO'
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, kind])
 }
 
 model InfraDiagnostic {
@@ -312,6 +354,7 @@ enum AgentKey {
   RENEWAL_STALLED_ALERT
   COMPETITION_FOLLOWUP_ALERT
   DATA_COMPLETENESS_ALERT
+  SCHOOL_DETAILS_REMINDER
 }
 
 enum SuggestionType {
@@ -324,6 +367,7 @@ enum SuggestionType {
   RENEWAL_STALLED
   COMPETITION_FOLLOWUP_NEEDED
   MISSING_HANDOVER_DATA
+  SCHOOL_DETAILS_REMINDER_SENT
 }
 
 enum SuggestionStatus {

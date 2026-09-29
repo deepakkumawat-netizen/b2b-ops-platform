@@ -15,6 +15,7 @@ import { StalePhaseAgentService } from './agents/stale-phase-agent.service';
 import { RenewalStalledAgentService } from './agents/renewal-stalled-agent.service';
 import { CompetitionFollowupAgentService } from './agents/competition-followup-agent.service';
 import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
+import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
@@ -36,6 +37,7 @@ import { CronController } from './cron.controller';
     RenewalStalledAgentService,
     CompetitionFollowupAgentService,
     DataCompletenessAgentService,
+    SchoolDetailsReminderAgentService,
     AgentRunnerService,
     AgentSuggestionsService,
   ],

@@ -126,6 +126,8 @@ export type School = {
   trainingMode: TrainingMode | null;
   specialCommitments: string | null;
   totalStudents: number | null;
+  orientationPreferredDate: string | null;
+  orientationNote: string | null;
   currentPhase: SchoolLifecyclePhase;
   status: SchoolStatus;
   assignedAccountManagerId: string | null;
@@ -153,12 +155,55 @@ export type Teacher = {
   lmsCredentialGenerated: boolean;
 };
 
+export type Student = {
+  id: string;
+  name: string;
+  grade: string | null;
+  section: string | null;
+  lmsCredentialGenerated: boolean;
+};
+
+export type StudentFormRow = { name: string; grade: string; section: string };
+
+export type SchoolDetailsInfo = {
+  schoolName: string;
+  teachersOnFile: number;
+  studentsOnFile: number;
+  hasLogo: boolean;
+  infra: { labCapacity: string | null; internetConnectivity: string | null; systemsPerStudent: string | null } | null;
+  orientation: { date: string; note: string | null } | null;
+  partsDone: number;
+  partsTotal: number;
+};
+
 export type InfraDiagnostic = {
   labCapacity: string | null;
   internetConnectivity: string | null;
   systemsPerStudent: string | null;
   recommendedSessionMix: string | null;
 } | null;
+
+export type SchoolAssetKind = 'LOGO' | 'COBRANDED_LOGO';
+
+/** Image URL for <img src> — the session cookie authenticates it; `version`
+ * (the upload time) busts the browser cache after a new upload. */
+export const schoolAssetUrl = (schoolId: string, kind: SchoolAssetKind, version: string) =>
+  `${API_BASE}/schools/${schoolId}/onboarding/assets/${kind}?v=${encodeURIComponent(version)}`;
+
+export type OnboardingOverview = {
+  schoolName: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  accountManagerName: string | null;
+  whatsappGroupLink: string | null;
+  ownerInvite: { sentAt: string; recipient: string } | null;
+  teachers: Array<{ id: string; name: string; phone: string | null; designation: string | null; whatsappInvitedAt: string | null }>;
+  logoUpdatedAt: string | null;
+  cobrandedLogoUpdatedAt: string | null;
+  welcomeMessage: string;
+  tasks: Record<string, { status: PhaseTaskStatus; completedAt: string | null }>;
+};
 
 export type TeacherFormRow = { name: string; phone: string; designation: string; gradeAssigned: string };
 
@@ -286,7 +331,8 @@ export type AgentName =
   | 'stalePhase'
   | 'renewalStalled'
   | 'competitionFollowup'
-  | 'dataCompleteness';
+  | 'dataCompleteness'
+  | 'schoolDetailsReminder';
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
 
 export const api = {
@@ -329,13 +375,43 @@ export const api = {
       body: JSON.stringify(dto),
     }),
 
+  // Onboarding Setup (WhatsApp group + logos).
+  getOnboarding: (schoolId: string) => request<OnboardingOverview>(`/schools/${schoolId}/onboarding`),
+  setWhatsappLink: (schoolId: string, link: string) =>
+    request<{ saved: boolean; inviteSent: boolean | null }>(`/schools/${schoolId}/onboarding/whatsapp-link`, { method: 'PUT', body: JSON.stringify({ link }) }),
+  emailWhatsappInvite: (schoolId: string) =>
+    request<{ sent: boolean }>(`/schools/${schoolId}/onboarding/whatsapp-invite/owner`, { method: 'POST' }),
+  markTeacherWhatsappInvited: (schoolId: string, teacherId: string) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/onboarding/whatsapp-invite/teachers/${teacherId}`, { method: 'POST' }),
+  uploadSchoolAsset: (schoolId: string, kind: SchoolAssetKind, dataUrl: string) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/onboarding/assets/${kind}`, { method: 'PUT', body: JSON.stringify({ dataUrl }) }),
+  markWelcomeShared: (schoolId: string) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/onboarding/welcome-shared`, { method: 'POST' }),
+
+  listStudents: (schoolId: string) => request<Student[]>(`/schools/${schoolId}/students`),
+  setStudentLms: (schoolId: string, studentId: string, lmsCredentialGenerated: boolean) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/students/${studentId}`, { method: 'PATCH', body: JSON.stringify({ lmsCredentialGenerated }) }),
+  markAllStudentsLms: (schoolId: string) =>
+    request<{ updated: number }>(`/schools/${schoolId}/students/lms-credentials-generated`, { method: 'POST' }),
+  deleteStudent: (schoolId: string, studentId: string) =>
+    request<{ success: boolean }>(`/schools/${schoolId}/students/${studentId}`, { method: 'DELETE' }),
+
   listTeachers: (schoolId: string) => request<Teacher[]>(`/schools/${schoolId}/teachers`),
+  getSchoolFormLink: (schoolId: string) => request<{ url: string }>(`/schools/${schoolId}/teachers/form-link`),
   requestTeacherDetails: (schoolId: string) =>
     request<{ sent: boolean }>(`/schools/${schoolId}/teachers/request-details`, { method: 'POST' }),
 
   // Public teacher-details form (no login — the school opens it from the emailed link).
   getTeacherForm: (schoolId: string, token: string) =>
-    request<{ schoolName: string; teachersOnFile: number }>(`/public/teacher-form/${schoolId}/${token}`),
+    request<SchoolDetailsInfo>(`/public/teacher-form/${schoolId}/${token}`),
+  submitStudentsForm: (schoolId: string, token: string, students: StudentFormRow[]) =>
+    request<{ added: number }>(`/public/teacher-form/${schoolId}/${token}/students`, { method: 'POST', body: JSON.stringify({ students }) }),
+  saveSchoolFormInfra: (schoolId: string, token: string, dto: { labCapacity: string; internetConnectivity: string; systemsPerStudent: string }) =>
+    request<{ success: boolean }>(`/public/teacher-form/${schoolId}/${token}/infra`, { method: 'PUT', body: JSON.stringify(dto) }),
+  saveSchoolFormOrientation: (schoolId: string, token: string, dto: { date: string; note: string }) =>
+    request<{ success: boolean }>(`/public/teacher-form/${schoolId}/${token}/orientation`, { method: 'PUT', body: JSON.stringify(dto) }),
+  uploadTeacherFormLogo: (schoolId: string, token: string, logo: string, cobranded?: string) =>
+    request<{ success: boolean }>(`/public/teacher-form/${schoolId}/${token}/logo`, { method: 'POST', body: JSON.stringify({ logo, cobranded }) }),
   submitTeacherForm: (schoolId: string, token: string, teachers: TeacherFormRow[]) =>
     request<{ added: number }>(`/public/teacher-form/${schoolId}/${token}`, { method: 'POST', body: JSON.stringify({ teachers }) }),
   createTeacher: (schoolId: string, dto: Partial<Teacher>) =>

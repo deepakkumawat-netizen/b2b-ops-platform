@@ -62,7 +62,7 @@ services:
       - key: BREVO_FROM
         sync: false
       - key: BREVO_FROM_NAME
-        value: CodeVidhya B2B Ops
+        value: codevidhya B2B Ops
       # Public URL used for links in emails (the teacher details form).
       - key: APP_URL
         value: https://b2b-ops-platform.onrender.com

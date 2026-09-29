@@ -38,6 +38,9 @@ function makeService(schoolOverrides: Record<string, unknown>, tasks: Task[], em
     workshops: [],
     competitions: [],
     renewalCycles: [],
+    assets: [],
+    emailLogs: [],
+    students: [],
     assignedAccountManager: null,
     ...schoolOverrides,
   };
@@ -192,5 +195,49 @@ describe('SchoolAutomationService', () => {
     const logger = (service as unknown as { logger: { warn: () => void } }).logger;
     jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
     await expect(service.sync('s1')).resolves.toBeUndefined();
+  });
+
+  it('ticks Onboarding Setup tasks from the group link, invites and logos — but not the welcome share', async () => {
+    const P = SchoolLifecyclePhase.ONBOARDING_SETUP;
+    const keys = ['whatsapp_group_created', 'whatsapp_stakeholders_added', 'school_logo_collected', 'cobranded_logo_designed', 'welcome_message_shared'];
+    const { service, tasks } = makeService(
+      {
+        currentPhase: P,
+        whatsappGroupLink: 'https://chat.whatsapp.com/Abc123',
+        emailLogs: [{ id: 'e1' }],
+        teachers: [{ lmsCredentialGenerated: false, trainedAt: null, whatsappInvitedAt: new Date() }],
+        assets: [{ kind: 'LOGO' }, { kind: 'COBRANDED_LOGO' }],
+      },
+      keys.map((k) => task(k, P)),
+    );
+    await service.sync('s1');
+    const status = Object.fromEntries(tasks.map((t) => [t.template.key, t.status]));
+    expect(status).toEqual({
+      whatsapp_group_created: PhaseTaskStatus.DONE,
+      whatsapp_stakeholders_added: PhaseTaskStatus.DONE,
+      school_logo_collected: PhaseTaskStatus.DONE,
+      cobranded_logo_designed: PhaseTaskStatus.DONE,
+      welcome_message_shared: PhaseTaskStatus.PENDING, // only the Share on WhatsApp button proves this
+    });
+  });
+
+  it('ticks the student data tasks once students are in, and LMS once every student has credentials', async () => {
+    const P = SchoolLifecyclePhase.DATA_COLLECTION_LMS;
+    const { service, tasks } = makeService(
+      { currentPhase: P, students: [{ lmsCredentialGenerated: true }, { lmsCredentialGenerated: false }] },
+      [task('student_data_collected', P), task('student_lms_credentials_generated', P)],
+    );
+    await service.sync('s1');
+    expect(tasks.map((t) => t.status)).toEqual([PhaseTaskStatus.DONE, PhaseTaskStatus.PENDING]);
+  });
+
+  it('does not count stakeholders as added until a teacher is invited too', async () => {
+    const P = SchoolLifecyclePhase.ONBOARDING_SETUP;
+    const { service, tasks } = makeService(
+      { currentPhase: P, whatsappGroupLink: 'https://chat.whatsapp.com/Abc123', emailLogs: [{ id: 'e1' }] },
+      [task('whatsapp_stakeholders_added', P)],
+    );
+    await service.sync('s1');
+    expect(tasks[0].status).toBe(PhaseTaskStatus.PENDING);
   });
 });

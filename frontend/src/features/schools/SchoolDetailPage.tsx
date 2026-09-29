@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, School } from '../../lib/api';
 import { SchoolChecklistTab } from './SchoolChecklistTab';
+import { SchoolOnboardingTab } from './SchoolOnboardingTab';
 import { SchoolTeachersTab } from './SchoolTeachersTab';
+import { SchoolStudentsTab } from './SchoolStudentsTab';
 import { SchoolInfraTab } from './SchoolInfraTab';
 import { SchoolWorkshopsTab } from './SchoolWorkshopsTab';
 import { SchoolEngagementTab } from './SchoolEngagementTab';
@@ -13,7 +15,7 @@ import { EditSchoolModal } from './EditSchoolModal';
 import { PhaseProgress } from '../../components/PhaseProgress';
 import { Skeleton, SkeletonCard } from '../../components/Skeleton';
 
-const TABS = ['Checklist', 'Teachers', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal', 'Activity'] as const;
+const TABS = ['Checklist', 'Onboarding', 'Teachers', 'Students', 'Infra', 'Workshops', 'Engagement', 'Competitions', 'Renewal', 'Activity'] as const;
 type Tab = (typeof TABS)[number];
 
 export function SchoolDetailPage() {
@@ -87,6 +89,13 @@ export function SchoolDetailPage() {
             Account manager: {school.assignedAccountManager?.name ?? 'Unassigned'} · Owner email:{' '}
             {school.ownerEmail ?? 'none on file'}
           </p>
+          {school.orientationPreferredDate && (
+            <p className="small">
+              📅 School’s preferred orientation date:{' '}
+              <strong>{new Date(school.orientationPreferredDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</strong>
+              {school.orientationNote ? ` — ${school.orientationNote}` : ''}
+            </p>
+          )}
         </div>
         <div className="school-header-phase">
           <PhaseProgress phase={school.currentPhase} />
@@ -123,7 +132,9 @@ export function SchoolDetailPage() {
 
       <div className="tab-content" key={refreshKey}>
         {tab === 'Checklist' && <SchoolChecklistTab schoolId={id} />}
+        {tab === 'Onboarding' && <SchoolOnboardingTab schoolId={id} />}
         {tab === 'Teachers' && <SchoolTeachersTab schoolId={id} />}
+        {tab === 'Students' && <SchoolStudentsTab schoolId={id} />}
         {tab === 'Infra' && <SchoolInfraTab schoolId={id} />}
         {tab === 'Workshops' && <SchoolWorkshopsTab schoolId={id} />}
         {tab === 'Engagement' && <SchoolEngagementTab schoolId={id} />}

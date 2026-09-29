@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { emailHtml, MailButton } from './email-html';
 
 // Thin wrapper so the rest of the app never touches an email provider
 // directly. HTTPS APIs only — Render's free plan blocks outbound SMTP
@@ -41,7 +42,7 @@ export class MailerService {
   constructor(private config: ConfigService) {
     this.brevoApiKey = this.config.get<string>('BREVO_API_KEY') || undefined;
     this.brevoFrom = this.config.get<string>('BREVO_FROM') || undefined;
-    this.brevoFromName = this.config.get<string>('BREVO_FROM_NAME') || 'CodeVidhya B2B Ops';
+    this.brevoFromName = this.config.get<string>('BREVO_FROM_NAME') || 'codevidhya B2B Ops';
     this.resendApiKey = this.config.get<string>('RESEND_API_KEY') || undefined;
     this.resendFrom = this.config.get<string>('RESEND_FROM') ?? 'onboarding@resend.dev';
   }
@@ -55,7 +56,9 @@ export class MailerService {
     subject: string,
     text: string,
     sender?: MailSender,
+    button?: MailButton,
   ): Promise<{ sent: boolean; response?: string }> {
+    const html = button ? emailHtml(text, button) : undefined;
     if (this.useBrevo()) {
       let from = { email: this.brevoFrom!, name: this.brevoFromName };
       let replyTo: MailSender | undefined;
@@ -63,7 +66,7 @@ export class MailerService {
         if (await this.isVerifiedBrevoSender(sender.email)) {
           from = { email: sender.email, name: sender.name };
         } else {
-          from = { email: this.brevoFrom!, name: `${sender.name} via CodeVidhya` };
+          from = { email: this.brevoFrom!, name: `${sender.name} via codevidhya` };
           replyTo = sender;
         }
       }
@@ -73,6 +76,7 @@ export class MailerService {
         ...(replyTo && { replyTo }),
         subject,
         textContent: text,
+        ...(html && { htmlContent: html }),
       });
     }
     if (this.resendApiKey) {
@@ -82,6 +86,7 @@ export class MailerService {
         ...(sender && { reply_to: sender.email }),
         subject,
         text,
+        ...(html && { html }),
       });
     }
     this.logger.log(`Email not configured — skipping email to ${to}: "${subject}"`);

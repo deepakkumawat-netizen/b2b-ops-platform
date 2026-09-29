@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CompetitionType,
+  EmailStatus,
   PhaseTaskStatus,
   RenewalStatus,
   SCHOOL_LIFECYCLE_PHASE_LABELS,
@@ -15,12 +16,25 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { teacherFormUrl } from '../teacher-form/teacher-form-token';
+import { SCHOOL_DETAILS_PARTS } from '../teacher-form/school-details';
+import { formatDateInZone } from '../common/time';
+
+// Same value as onboarding.service's WHATSAPP_INVITE_TEMPLATE_KEY — the
+// owner's WhatsApp group invite email, proof the stakeholders were invited.
+const WHATSAPP_INVITE_TEMPLATE_KEY = 'whatsapp_group_invite';
 
 export const WELCOME_EMAIL_TASK_KEY = 'welcome_email';
 const TEACHER_FORM_TASK_KEY = 'teacher_data_form_shared';
+// Kept as 'teacher_details_request' (the page grew from the teacher form) so
+// the reminder agent also counts emails sent before it did.
+export const SCHOOL_DETAILS_REQUEST_TEMPLATE_KEY = 'teacher_details_request';
+export const SCHOOL_DETAILS_REMINDER_TEMPLATE_KEY = 'school_details_reminder';
 
 const SCHOOL_FOR_SYNC = {
-  teachers: { select: { lmsCredentialGenerated: true, trainedAt: true } },
+  teachers: { select: { lmsCredentialGenerated: true, trainedAt: true, whatsappInvitedAt: true } },
+  students: { select: { lmsCredentialGenerated: true } },
+  assets: { select: { kind: true } },
+  emailLogs: { where: { templateKey: WHATSAPP_INVITE_TEMPLATE_KEY, status: EmailStatus.SENT }, select: { id: true }, take: 1 },
   infraDiagnostic: { select: { recommendedSessionMix: true } },
   workshops: { select: { status: true } },
   competitions: { select: { type: true, certificatesIssued: true, prizesAwarded: true } },
@@ -34,9 +48,10 @@ const filled = (...values: unknown[]) => values.every((v) => v !== null && v !==
 
 // Checklist tasks the app can PROVE are done from data already recorded —
 // each returns the evidence (shown as the task's note) or null. Everything
-// not listed here (calls, sessions, WhatsApp setup, logo design…) happens
-// outside the app, so it's left for a person to tick: auto-ticking those
-// would make the checklist and dashboard claim work that never happened.
+// not listed here (calls, sessions…) happens outside the app, so it's left
+// for a person to tick: auto-ticking those would make the checklist and
+// dashboard claim work that never happened. WhatsApp setup and logos are
+// proven by what the Onboarding tab records (group link, invites, images).
 const EVIDENCE: Record<string, (s: SchoolForSync) => string | null> = {
   handover_owner_details: (s) =>
     filled(s.ownerName, s.ownerDesignation, s.ownerEmail, s.ownerPhone) ? 'Owner name, designation, email and phone on file' : null,
@@ -44,9 +59,19 @@ const EVIDENCE: Record<string, (s: SchoolForSync) => string | null> = {
   handover_location: (s) => (filled(s.city, s.state) ? 'City and state on file' : null),
   handover_commitments: (s) =>
     filled(s.workshopsCommitted, s.trainingMode) ? 'Workshops committed and training mode on file' : null,
+  whatsapp_group_created: (s) => (filled(s.whatsappGroupLink) ? 'WhatsApp group link saved' : null),
+  whatsapp_stakeholders_added: (s) => {
+    const invited = s.teachers.filter((t) => t.whatsappInvitedAt).length;
+    return s.emailLogs.length > 0 && invited > 0 ? `Group invite emailed to the owner and sent to ${invited} teacher(s) on WhatsApp` : null;
+  },
+  school_logo_collected: (s) => (s.assets.some((a) => a.kind === 'LOGO') ? 'School logo uploaded' : null),
+  cobranded_logo_designed: (s) => (s.assets.some((a) => a.kind === 'COBRANDED_LOGO') ? 'Co-branded logo created' : null),
   teacher_details_collected: (s) => (s.teachers.length > 0 ? `${s.teachers.length} teacher(s) recorded` : null),
   teacher_lms_credentials_generated: (s) =>
     s.teachers.length > 0 && s.teachers.every((t) => t.lmsCredentialGenerated) ? 'LMS credentials generated for every teacher' : null,
+  student_data_collected: (s) => (s.students.length > 0 ? `${s.students.length} student(s) recorded` : null),
+  student_lms_credentials_generated: (s) =>
+    s.students.length > 0 && s.students.every((st) => st.lmsCredentialGenerated) ? 'LMS credentials generated for every student' : null,
   diagnostic_form_sent: (s) => (s.infraDiagnostic ? 'Infra diagnostic recorded' : null),
   session_mix_recommended: (s) => (filled(s.infraDiagnostic?.recommendedSessionMix) ? 'Session mix recorded on the diagnostic' : null),
   teacher_training_conducted: (s) =>
@@ -144,39 +169,40 @@ export class SchoolAutomationService {
       schoolId: school.id,
       recipient: school.ownerEmail,
       templateKey: 'welcome_email',
-      subject: `Welcome to CodeVidhya, ${school.name}!`,
+      subject: `Welcome to codevidhya, ${school.name}!`,
       body:
         `Dear ${school.ownerName ?? 'Team'},\n\n` +
         `Welcome aboard! This confirms our partnership for ${school.productProgram ?? 'your program'}. ` +
         `Your account manager will be your point of contact for everything ahead.\n\n` +
-        `Looking forward to a great year together.\n\nTeam CodeVidhya`,
+        `Looking forward to a great year together.\n\nTeam codevidhya`,
     });
   }
 
-  /** Emails the school a link to the public teacher-details form (SOP
-   * Phase 5 "Teacher details form shared"), ticking that task once sent.
-   * What the school submits lands in the Teachers tab and ticks "Teacher
-   * details collected". Also behind the Teachers tab's resend button. */
+  /** Emails the school the link to its school details page — teachers,
+   * students, logo, lab & internet, orientation date — and ticks "Teacher
+   * details form shared" (SOP Phase 5) once sent. What the school fills in
+   * lands in the tool and ticks its own tasks. Also behind the Teachers
+   * tab's resend button. */
   async sendTeacherDetailsRequest(schoolId: string): Promise<boolean> {
     const school = await this.prisma.school.findUnique({ where: { id: schoolId } });
     if (!school?.ownerEmail) return false;
-    const link = teacherFormUrl(
-      this.config.get<string>('APP_URL') || 'http://localhost:5173',
-      schoolId,
-      this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-    );
+    const link = this.schoolDetailsLink(schoolId);
     const sent = await this.notifications.sendTemplateEmail({
       schoolId,
       recipient: school.ownerEmail,
-      templateKey: 'teacher_details_request',
-      subject: `Teacher details for ${school.name} — CodeVidhya onboarding`,
+      templateKey: SCHOOL_DETAILS_REQUEST_TEMPLATE_KEY,
+      button: { label: 'Fill in school details', url: link },
+      subject: `School details for ${school.name} — codevidhya onboarding`,
       body:
         `Dear ${school.ownerName ?? 'Team'},\n\n` +
-        `To set up LMS access and plan training for your teachers, please share their details ` +
-        `(name, phone, designation, grades they teach) using this short form — no login needed:\n\n` +
+        `To set up LMS access, training and workshops for ${school.name}, please fill in a few details ` +
+        `on this one page — no login needed. Click the button below, or open this link:\n\n` +
         `${link}\n\n` +
-        `You can add as many teachers as you like, and use the same link again later if more join.\n\n` +
-        `Team CodeVidhya`,
+        `The page has:\n` +
+        SCHOOL_DETAILS_PARTS.map((p) => `• ${p.label}`).join('\n') +
+        `\n\nYou can fill in any part now and the rest later — the same link keeps working. ` +
+        `Teacher and student lists can be pasted straight from Excel or Google Sheets.\n\n` +
+        `Team codevidhya`,
     });
     if (!sent) return false;
     const task = await this.prisma.schoolPhaseTask.findFirst({
@@ -188,8 +214,66 @@ export class SchoolAutomationService {
         data: { status: PhaseTaskStatus.DONE, completedAt: new Date(), completedByStaffId: null, notes: `Form link emailed to ${school.ownerEmail}` },
       });
     }
-    await this.activity.record(schoolId, null, 'Agent emailed the teacher details form', `To ${school.ownerEmail}`);
+    await this.activity.record(schoolId, null, 'Agent emailed the school details page link', `To ${school.ownerEmail}`);
     return true;
+  }
+
+  /** Reminder listing only the parts still empty (SchoolDetailsReminderAgent decides who). */
+  async sendSchoolDetailsReminder(schoolId: string, missing: string[]): Promise<boolean> {
+    const school = await this.prisma.school.findUnique({ where: { id: schoolId }, select: { name: true, ownerName: true, ownerEmail: true } });
+    if (!school?.ownerEmail || missing.length === 0) return false;
+    const link = this.schoolDetailsLink(schoolId);
+    const sent = await this.notifications.sendTemplateEmail({
+      schoolId,
+      recipient: school.ownerEmail,
+      templateKey: SCHOOL_DETAILS_REMINDER_TEMPLATE_KEY,
+      button: { label: 'Fill in school details', url: link },
+      subject: `Reminder: a few details still needed for ${school.name}`,
+      body:
+        `Dear ${school.ownerName ?? 'Team'},\n\n` +
+        `Thank you for everything shared so far! To finish setting up ${school.name}, we still need:\n` +
+        missing.map((m) => `• ${m}`).join('\n') +
+        `\n\nIt only takes a few minutes, on the same page as before:\n\n` +
+        `${link}\n\n` +
+        `Team codevidhya`,
+    });
+    if (sent) await this.activity.record(schoolId, null, 'Agent sent a school details reminder', `Still needed: ${missing.join(', ')}`);
+    return sent;
+  }
+
+  /** Lets the account manager (or admins, if none) know to confirm the date. */
+  async notifyOrientationDatePicked(schoolId: string) {
+    await this.safely('notifyOrientationDatePicked', schoolId, async () => {
+      const school = await this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true, orientationPreferredDate: true, orientationNote: true, assignedAccountManager: { select: { email: true, name: true, isActive: true } } },
+      });
+      if (!school?.orientationPreferredDate) return;
+      const manager = school.assignedAccountManager?.isActive ? school.assignedAccountManager : null;
+      const recipients = manager ? [manager.email] : await this.adminAlertRecipients();
+      const when = formatDateInZone(school.orientationPreferredDate);
+      await Promise.all(
+        recipients.map((recipient) =>
+          this.notifications.sendTemplateEmail({
+            schoolId,
+            recipient,
+            templateKey: 'orientation_date_picked',
+            fromAccountManager: false,
+            subject: `${school.name} picked ${when} for orientation`,
+            body:
+              `Hi ${manager?.name ?? 'team'},\n\n` +
+              `${school.name} picked ${when} as its preferred date for the leadership orientation / teacher induction.` +
+              (school.orientationNote ? `\nTheir note: "${school.orientationNote}"` : '') +
+              `\n\nPlease confirm the session with the school, then tick it on the checklist once it's done.`,
+          }),
+        ),
+      );
+    });
+  }
+
+  /** The school's own details-page link (also shown to staff to open or share on WhatsApp). */
+  schoolDetailsLink(schoolId: string) {
+    return teacherFormUrl(this.config.get<string>('APP_URL') || 'http://localhost:5173', schoolId, this.config.getOrThrow<string>('JWT_ACCESS_SECRET'));
   }
 
   private async sendWelcomeEmailAndTick(schoolId: string) {

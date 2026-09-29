@@ -61,7 +61,7 @@ export function LandingPage() {
 
       <section className="landing-hero">
         <div className="landing-hero-text">
-          <span className="landing-eyebrow">For CodeVidhya’s school partnerships team</span>
+          <span className="landing-eyebrow">For codevidhya’s school partnerships team</span>
           <h1>
             Onboard every partner school <span>the same way, every time.</span>
           </h1>
@@ -167,7 +167,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <footer className="landing-footer">© {new Date().getFullYear()} CodeVidhya · B2B Ops Platform</footer>
+      <footer className="landing-footer">© {new Date().getFullYear()} codevidhya · B2B Ops Platform</footer>
     </div>
   );
 }

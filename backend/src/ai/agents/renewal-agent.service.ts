@@ -64,7 +64,7 @@ export class RenewalAgentService {
     },
   ): string {
     return (
-      `You are drafting a renewal-pitch email from CodeVidhya to a partner school, "${school.name}" ` +
+      `You are drafting a renewal-pitch email from codevidhya to a partner school, "${school.name}" ` +
       `(contact: ${school.ownerName ?? 'the school owner/decision-maker'}), for the next academic year. ` +
       `Ground the pitch in this year's actual delivery record, cited specifically: ` +
       `${summary.workshopsCompleted} of ${summary.workshopsTotal} scheduled student workshops completed, ` +

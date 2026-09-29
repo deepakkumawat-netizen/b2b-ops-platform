@@ -18,6 +18,7 @@ const CTOR_ORDER = [
   'renewalStalled',
   'competitionFollowup',
   'dataCompleteness',
+  'schoolDetailsReminder',
   'checklist',
 ] as const;
 

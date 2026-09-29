@@ -140,6 +140,9 @@ export const AgentKey = {
   RENEWAL_STALLED_ALERT: 'RENEWAL_STALLED_ALERT',
   COMPETITION_FOLLOWUP_ALERT: 'COMPETITION_FOLLOWUP_ALERT',
   DATA_COMPLETENESS_ALERT: 'DATA_COMPLETENESS_ALERT',
+  // School-facing: reminds a school about the parts of its school details
+  // page still empty (teachers, students, logo, lab, orientation date).
+  SCHOOL_DETAILS_REMINDER: 'SCHOOL_DETAILS_REMINDER',
 } as const;
 export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
 
@@ -153,6 +156,7 @@ export const SuggestionType = {
   RENEWAL_STALLED: 'RENEWAL_STALLED',
   COMPETITION_FOLLOWUP_NEEDED: 'COMPETITION_FOLLOWUP_NEEDED',
   MISSING_HANDOVER_DATA: 'MISSING_HANDOVER_DATA',
+  SCHOOL_DETAILS_REMINDER_SENT: 'SCHOOL_DETAILS_REMINDER_SENT',
 } as const;
 export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
 

@@ -815,14 +815,43 @@ a:hover {
 }
 .public-form-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+  grid-template-columns: var(--row-columns, 28px 1.4fr 1fr 1fr 0.8fr 40px);
   gap: 8px;
+  align-items: center;
+}
+.public-form-head {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.public-form-num {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
 }
 @media (max-width: 640px) {
+  .public-form {
+    padding: 20px 16px;
+  }
+  .public-form-head {
+    display: none;
+  }
   .public-form-row {
     grid-template-columns: 1fr 1fr;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+  }
+  .public-form-num {
+    grid-column: 1 / -1;
+    text-align: left;
+    font-weight: 600;
+  }
+  .public-form-num::before {
+    content: attr(data-label) ' ';
   }
 }
 .public-form-success {
@@ -1559,6 +1588,7 @@ a:hover {
 }
 .checklist label {
   display: flex;
+  flex-direction: row; /* the global form-label style stacks its children */
   align-items: center;
   gap: 10px;
   color: var(--text);
@@ -1858,4 +1888,183 @@ button > svg {
   margin-top: 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* ── Onboarding tab (SOP Phase 4: WhatsApp group + logos) ───────────────── */
+.onboarding-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.onboarding-tab .card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboarding-tab .card p {
+  margin: 0;
+}
+.onboarding-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.onboarding-step-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 15px;
+}
+.onboarding-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.onboarding-inline {
+  display: flex;
+  gap: 8px;
+}
+.onboarding-inline input {
+  flex: 1;
+  min-width: 0;
+}
+.onboarding-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.onboarding-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.onboarding-logo-box {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: #fff;
+  overflow: hidden;
+}
+.onboarding-logo-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.onboarding-cobranded {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+/* A <label> wrapping a hidden file input, styled like a secondary button. */
+label.button-like {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  cursor: pointer;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  font-size: 14px;
+  font-weight: 600;
+  width: fit-content;
+}
+label.button-like:hover {
+  background: var(--surface-sunken);
+}
+@media (max-width: 640px) {
+  .onboarding-inline,
+  .onboarding-person {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.public-form-logo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.public-form-logo p {
+  margin: 2px 0 8px;
+}
+
+/* ── School details page (public, one link for everything) ──────────────── */
+.school-form-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.school-form-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.school-form-progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+.school-part {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.school-part.done {
+  border-color: #a7f3d0;
+}
+.school-part.done .onboarding-step-num {
+  background: #059669;
+}
+.school-part-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.school-part-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 16px;
+}
+.school-part p {
+  margin: 0;
+}
+.school-part-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.school-part-grid .span-all {
+  grid-column: 1 / -1;
+}
+.school-part-grid .span-all button {
+  margin-bottom: 6px;
 }

@@ -53,14 +53,14 @@ export function schoolFactsForPrompt(school: SchoolContext, now = new Date()): s
     school.productProgram && `Program: ${school.productProgram}${grades ? `, ${grades}` : ''}`,
     school.trainingMode && `Training mode: ${school.trainingMode.toLowerCase()}`,
     school.workshopsCommitted != null && `Workshops committed this year: ${school.workshopsCommitted}`,
-    `Account Manager (the sender): ${manager ? `${manager.name}, ${manager.email}` : 'the CodeVidhya team'}`,
+    `Account Manager (the sender): ${manager ? `${manager.name}, ${manager.email}` : 'the codevidhya team'}`,
     `Today's date: ${formatDay(now)}`,
     `If proposing a meeting, offer: ${slots.join(' or ')}`,
   ].filter(Boolean);
   return (
     `\n\nFacts to use (real values — use them as written):\n- ${facts.join('\n- ')}\n\n` +
     `Rules: Address the school contact by name${school.ownerName ? '' : ' (or "Dear Sir/Madam" if no name is given)'}. ` +
-    `Sign off as ${manager ? `${manager.name}, Account Manager, CodeVidhya` : 'Team CodeVidhya'}. ` +
+    `Sign off as ${manager ? `${manager.name}, Account Manager, codevidhya` : 'Team codevidhya'}. ` +
     `Never write placeholders or anything in square brackets like [Name] or [Date] — the email is sent exactly as written.`
   );
 }
@@ -77,7 +77,7 @@ export function fillPlaceholders(draft: DraftedSuggestion, school: SchoolContext
     [/\[(your name|sender(?:'s)? name|account manager(?:'s)? name|am name)\]/gi, manager?.name],
     [/\[(your email|email|account manager(?:'s)? email)\]/gi, manager?.email],
     [/\[(your title|your designation|designation)\]/gi, manager ? 'Account Manager' : null],
-    [/\[(company|company name|organi[sz]ation)\]/gi, 'CodeVidhya'],
+    [/\[(company|company name|organi[sz]ation)\]/gi, 'codevidhya'],
     [/\[(city|location)\]/gi, school.city],
     [/\[(program|product|program name)\]/gi, school.productProgram],
     [/\[(today(?:'s)? date|current date)\]/gi, formatDay(now)],

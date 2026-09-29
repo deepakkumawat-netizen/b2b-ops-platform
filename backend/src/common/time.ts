@@ -43,3 +43,8 @@ export function yearInZone(date: Date, timeZone = APP_TIMEZONE): number {
 export function formatInZone(date: Date, timeZone = APP_TIMEZONE): string {
   return new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
+
+/** Date only (e.g. "5 Oct 2026") in the business timezone. */
+export function formatDateInZone(date: Date, timeZone = APP_TIMEZONE): string {
+  return new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium' }).format(date);
+}

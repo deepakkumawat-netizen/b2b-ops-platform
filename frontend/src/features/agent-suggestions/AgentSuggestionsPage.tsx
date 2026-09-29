@@ -128,6 +128,7 @@ export function AgentSuggestionsPage() {
         `Checklist agent made ${result.checklist} update(s) (tasks ticked + phases advanced). ` +
           `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
           `Auto-sent ${result.workshopReminder} workshop reminder(s), ${result.workshopFeedbackNag} feedback nag(s), ` +
+          `${result.schoolDetailsReminder} school details reminder(s), ` +
           `and opened ${result.renewalCycleOpener} renewal cycle(s) automatically. ` +
           `Logged ${alerts} internal alert(s) (stale phase, stalled renewal, competition follow-up, missing data).`,
       );

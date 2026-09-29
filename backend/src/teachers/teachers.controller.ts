@@ -26,6 +26,13 @@ export class TeachersController {
     return this.teachers.listForSchool(schoolId);
   }
 
+  /** The school details page link, for staff to open or share (e.g. on WhatsApp). */
+  @Get('form-link')
+  async formLink(@Param('schoolId') schoolId: string, @CurrentStaff() staff: StaffJwtPayload) {
+    await assertSchoolAccessById(this.prisma, staff, schoolId);
+    return { url: this.automation.schoolDetailsLink(schoolId) };
+  }
+
   /** (Re)sends the school the teacher-details form link. */
   @Post('request-details')
   async requestDetails(@Param('schoolId') schoolId: string, @CurrentStaff() staff: StaffJwtPayload) {

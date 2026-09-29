@@ -71,7 +71,7 @@ export class StaffService {
         recipient: updated.email,
         templateKey: 'STAFF_ACCOUNT_APPROVED',
         subject: 'Your B2B Ops Platform account is approved',
-        body: `Hi ${updated.name},\n\nYour account has been approved with the role ${updated.role}. You can now sign in with the email and password you chose.\n\nTeam CodeVidhya`,
+        body: `Hi ${updated.name},\n\nYour account has been approved with the role ${updated.role}. You can now sign in with the email and password you chose.\n\nTeam codevidhya`,
       });
     }
     return updated;

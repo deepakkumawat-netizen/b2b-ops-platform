@@ -24,6 +24,8 @@ import { AutomationModule } from './automation/automation.module';
 import { TeacherFormModule } from './teacher-form/teacher-form.module';
 import { StaffModule } from './staff/staff.module';
 import { ReportsModule } from './reports/reports.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { StudentsModule } from './students/students.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { ReportsModule } from './reports/reports.module';
     ActivityModule,
     AutomationModule,
     TeacherFormModule,
+    OnboardingModule,
+    StudentsModule,
     AuthModule,
     SchoolsModule,
     PhaseTasksModule,

@@ -44,7 +44,7 @@ export class WorkshopsService {
       data: { status: WorkshopStatus.CONFIRMED },
     });
     const sent = await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_confirmation', 'Workshop Confirmed', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nThis confirms the workshop "${workshop.topic}" scheduled for ${formatInZone(updated.scheduledAt)}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nThis confirms the workshop "${workshop.topic}" scheduled for ${formatInZone(updated.scheduledAt)}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.\n\nTeam codevidhya`,
     );
     return this.markSent(updated, sent, 'confirmationSentAt');
   }
@@ -52,7 +52,7 @@ export class WorkshopsService {
   async remind(schoolId: string, workshopId: string) {
     const workshop = await this.findOrThrow(schoolId, workshopId);
     const sent = await this.notifyForWorkshop(workshop.schoolId, workshop, 'workshop_reminder', 'Workshop Reminder — Tomorrow', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nA reminder that the workshop "${workshop.topic}" is scheduled for ${formatInZone(workshop.scheduledAt)}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nA reminder that the workshop "${workshop.topic}" is scheduled for ${formatInZone(workshop.scheduledAt)}.\n\nTeam codevidhya`,
     );
     return this.markSent(workshop, sent, 'reminderSentAt');
   }
@@ -70,7 +70,7 @@ export class WorkshopsService {
       'workshop_completion',
       'Thank You — Workshop Completed',
       (school) =>
-        `Dear ${school.ownerName ?? 'Team'},\n\nThank you for hosting "${workshop.topic}"! We'd love your feedback — please share it via the feedback form shared alongside this email.\n\nTeam CodeVidhya`,
+        `Dear ${school.ownerName ?? 'Team'},\n\nThank you for hosting "${workshop.topic}"! We'd love your feedback — please share it via the feedback form shared alongside this email.\n\nTeam codevidhya`,
     );
     return this.markSent(updated, sent, 'feedbackFormSentAt');
   }
@@ -83,7 +83,7 @@ export class WorkshopsService {
       'workshop_feedback_nag',
       'We\'d Still Love Your Feedback',
       (school) =>
-        `Dear ${school.ownerName ?? 'Team'},\n\nWe haven't heard back yet on the feedback form for "${workshop.topic}" — it only takes a minute and helps us improve future sessions. Please share it when you get a chance.\n\nTeam CodeVidhya`,
+        `Dear ${school.ownerName ?? 'Team'},\n\nWe haven't heard back yet on the feedback form for "${workshop.topic}" — it only takes a minute and helps us improve future sessions. Please share it when you get a chance.\n\nTeam codevidhya`,
     );
     return this.markSent(workshop, sent, 'feedbackNagSentAt');
   }
@@ -95,7 +95,7 @@ export class WorkshopsService {
       data: { status: WorkshopStatus.CANCELLED, cancelReason: dto.cancelReason },
     });
     await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_cancellation', 'Workshop Cancelled', (school) =>
-      `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${formatInZone(updated.scheduledAt)} has been cancelled: ${dto.cancelReason}.\n\nTeam CodeVidhya`,
+      `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${formatInZone(updated.scheduledAt)} has been cancelled: ${dto.cancelReason}.\n\nTeam codevidhya`,
     );
     return updated;
   }
