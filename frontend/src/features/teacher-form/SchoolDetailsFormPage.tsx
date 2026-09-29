@@ -18,6 +18,7 @@ const STUDENT_COLUMNS: RowsColumn<StudentFormRow>[] = [
 const emptyTeacher = (): TeacherFormRow => ({ name: '', phone: '', designation: '', gradeAssigned: '' });
 const emptyStudent = (): StudentFormRow => ({ name: '', grade: '', section: '' });
 const rowsOf = <T,>(make: () => T, n: number) => Array.from({ length: n }, make);
+const emptyInfra = { labCapacity: '', internetConnectivity: '', systemsPerStudent: '' };
 
 const tomorrow = () => {
   const d = new Date();
@@ -27,66 +28,231 @@ const tomorrow = () => {
 
 // Public page (no login): the one link a school gets by email to send us
 // everything onboarding needs — teachers, students, logo, lab & internet
-// and an orientation date. Each part can be done now or later with the
-// same link; everything submitted lands in the tool and ticks its
-// checklist task. (Lives at /teacher-form/… — the page grew from the
-// teacher form, and links already emailed must keep working.)
+// and an orientation date. One Submit button (always visible at the bottom)
+// saves every part that has something new; the logo uploads as soon as it's
+// picked. Parts can be filled now or later with the same link; everything
+// lands in the tool and ticks its checklist task. (Lives at /teacher-form/…
+// — the page grew from the teacher form, and links already emailed must
+// keep working.)
 export function SchoolDetailsFormPage() {
   const { schoolId = '', token = '' } = useParams();
   const [info, setInfo] = useState<SchoolDetailsInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [teachers, setTeachers] = useState(rowsOf(emptyTeacher, 5));
+  const [students, setStudents] = useState(rowsOf(emptyStudent, 10));
+  const [infra, setInfra] = useState(emptyInfra);
+  const [orientation, setOrientation] = useState({ date: '', note: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; lines: string[] } | null>(null);
+
   function reload() {
     return api
       .getTeacherForm(schoolId, token)
-      .then(setInfo)
-      .catch(() => setLoadError('This link is not valid. Please use the link from your codevidhya email.'));
+      .then((i) => {
+        setInfo(i);
+        return i;
+      })
+      .catch(() => {
+        setLoadError('This link is not valid. Please use the link from your codevidhya email.');
+        return null;
+      });
   }
 
   useEffect(() => {
-    reload();
+    // Show what the school already sent, so it can be checked or changed.
+    reload().then((i) => {
+      if (!i) return;
+      if (i.infra) {
+        setInfra({
+          labCapacity: i.infra.labCapacity ?? '',
+          internetConnectivity: i.infra.internetConnectivity ?? '',
+          systemsPerStudent: i.infra.systemsPerStudent ?? '',
+        });
+      }
+      if (i.orientation) setOrientation({ date: i.orientation.date.slice(0, 10), note: i.orientation.note ?? '' });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId, token]);
 
+  if (!info) {
+    return (
+      <div className="auth-shell">
+        <div className="public-form">
+          <h1>School details</h1>
+          {loadError ? <p className="error">{loadError}</p> : <p className="muted">Loading…</p>}
+        </div>
+      </div>
+    );
+  }
+
+  const newTeachers = teachers.filter((r) => r.name.trim());
+  const newStudents = students.filter((r) => r.name.trim());
+  const savedInfra = {
+    labCapacity: info.infra?.labCapacity ?? '',
+    internetConnectivity: info.infra?.internetConnectivity ?? '',
+    systemsPerStudent: info.infra?.systemsPerStudent ?? '',
+  };
+  const infraChanged =
+    Object.values(infra).some((v) => v.trim()) && JSON.stringify(infra) !== JSON.stringify(savedInfra);
+  const orientationChanged =
+    !!orientation.date &&
+    (orientation.date !== info.orientation?.date.slice(0, 10) || orientation.note !== (info.orientation?.note ?? ''));
+
+  const pending = [
+    newTeachers.length > 0 && `${newTeachers.length} teacher${newTeachers.length === 1 ? '' : 's'}`,
+    newStudents.length > 0 && `${newStudents.length} student${newStudents.length === 1 ? '' : 's'}`,
+    infraChanged && 'lab details',
+    orientationChanged && 'orientation date',
+  ].filter(Boolean) as string[];
+
+  // Saves each part that has something new, in order; stops at the first
+  // failure so nothing is silently lost (what saved stays saved).
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (pending.length === 0) return;
+    setSubmitting(true);
+    setResult(null);
+    const lines: string[] = [];
+    try {
+      if (newTeachers.length > 0) {
+        const { added } = await api.submitTeacherForm(schoolId, token, newTeachers);
+        setTeachers(rowsOf(emptyTeacher, 5));
+        lines.push(`✓ ${added} teacher(s) received`);
+      }
+      if (newStudents.length > 0) {
+        const { added } = await api.submitStudentsForm(schoolId, token, newStudents);
+        setStudents(rowsOf(emptyStudent, 10));
+        lines.push(`✓ ${added} student(s) received`);
+      }
+      if (infraChanged) {
+        await api.saveSchoolFormInfra(schoolId, token, infra);
+        lines.push('✓ Lab details saved');
+      }
+      if (orientationChanged) {
+        await api.saveSchoolFormOrientation(schoolId, token, orientation);
+        lines.push('✓ Orientation date saved — your account manager will confirm it');
+      }
+      await reload();
+      setResult({ ok: true, lines });
+    } catch (err) {
+      await reload();
+      setResult({ ok: false, lines: [...lines, `✕ ${err instanceof Error ? err.message : 'Could not save — please try again.'}`] });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const allDone = info.partsDone === info.partsTotal;
+
   return (
     <div className="auth-shell">
-      <div className="public-form">
+      <form className="public-form" onSubmit={onSubmit}>
         <h1>School details</h1>
-        {info && (
-          <>
-            <p className="auth-subtitle">{info.schoolName} · codevidhya onboarding</p>
-            <div className="school-form-progress">
-              <div className="school-form-progress-bar">
-                <span style={{ width: `${(info.partsDone / info.partsTotal) * 100}%` }} />
-              </div>
-              <span className="small">
-                <strong>
-                  {info.partsDone} of {info.partsTotal}
-                </strong>{' '}
-                parts done
-                {info.partsDone === info.partsTotal ? ' — thank you! 🎉' : ' · fill in any part now, the rest later with the same link'}
-              </span>
-            </div>
-          </>
-        )}
-        {!info && !loadError && <p className="muted">Loading…</p>}
-        {loadError && <p className="error">{loadError}</p>}
+        <p className="auth-subtitle">{info.schoolName} · codevidhya onboarding</p>
+        <div className="school-form-progress">
+          <div className="school-form-progress-bar">
+            <span style={{ width: `${(info.partsDone / info.partsTotal) * 100}%` }} />
+          </div>
+          <span className="small">
+            <strong>
+              {info.partsDone} of {info.partsTotal}
+            </strong>{' '}
+            parts done
+            {allDone ? ' — thank you! 🎉' : ' · fill in what you have, press Submit at the bottom, and come back later for the rest'}
+          </span>
+        </div>
 
-        {info && (
-          <>
-            <TeachersPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
-            <StudentsPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
-            <LogoPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
-            <InfraPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
-            <OrientationPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
-          </>
+        <Part n={1} title="Teacher details" done={info.teachersOnFile > 0} doneText={`${info.teachersOnFile} received`}>
+          <p className="muted small">
+            One row per teacher — only the name is required. Have a list in Excel or Google Sheets? Copy the rows and paste them into the first Name box.
+            {info.teachersOnFile > 0 && ' You can add more teachers anytime.'}
+          </p>
+          <RowsTable columns={TEACHER_COLUMNS} rows={teachers} setRows={setTeachers} emptyRow={emptyTeacher} maxRows={100} rowLabel="Teacher" />
+        </Part>
+
+        <Part n={2} title="Student details" done={info.studentsOnFile > 0} doneText={`${info.studentsOnFile} received`}>
+          <p className="muted small">
+            Name, grade and section of the students joining the program — used to create their LMS logins. Easiest: copy the Name, Grade and Section columns
+            from your Excel sheet and paste them into the first Name box. You can send one class at a time.
+          </p>
+          <RowsTable columns={STUDENT_COLUMNS} rows={students} setRows={setStudents} emptyRow={emptyStudent} maxRows={500} rowLabel="Student" />
+        </Part>
+
+        <LogoPart info={info} schoolId={schoolId} token={token} onSaved={reload} />
+
+        <Part n={4} title="Computer lab & internet" done={!!info.infra} doneText="Received">
+          <p className="muted small">Helps us plan the right mix of theory and practical sessions.</p>
+          <div className="school-part-grid">
+            <label>
+              Computers in the lab
+              <input placeholder="e.g. 30 computers" value={infra.labCapacity} onChange={(e) => setInfra({ ...infra, labCapacity: e.target.value })} />
+            </label>
+            <label>
+              Internet connection
+              <select value={infra.internetConnectivity} onChange={(e) => setInfra({ ...infra, internetConnectivity: e.target.value })}>
+                <option value="">Choose…</option>
+                <option value="Good — works well">Good — works well</option>
+                <option value="Slow or unreliable">Slow or unreliable</option>
+                <option value="No internet in the lab">No internet in the lab</option>
+              </select>
+            </label>
+            <label>
+              Students per computer
+              <input placeholder="e.g. 2" value={infra.systemsPerStudent} onChange={(e) => setInfra({ ...infra, systemsPerStudent: e.target.value })} />
+            </label>
+          </div>
+        </Part>
+
+        <Part
+          n={5}
+          title="Orientation date"
+          done={!!info.orientation}
+          doneText={info.orientation ? new Date(info.orientation.date).toLocaleDateString('en-IN', { dateStyle: 'long' }) : undefined}
+        >
+          <p className="muted small">
+            Pick a day that suits you for the leadership orientation and teacher induction session. Your account manager will confirm it.
+          </p>
+          <div className="school-part-grid">
+            <label>
+              Preferred date
+              <input type="date" min={tomorrow()} value={orientation.date} onChange={(e) => setOrientation({ ...orientation, date: e.target.value })} />
+            </label>
+            <label>
+              Preferred time or note (optional)
+              <input
+                placeholder="e.g. 10 AM, after assembly"
+                value={orientation.note}
+                onChange={(e) => setOrientation({ ...orientation, note: e.target.value })}
+                maxLength={200}
+              />
+            </label>
+          </div>
+        </Part>
+
+        {result && (
+          <div className={result.ok ? 'public-form-success' : 'error'}>
+            {result.ok && <strong>Thank you! Your details were sent.</strong>}
+            {result.lines.map((l) => (
+              <div key={l} className="small">
+                {l}
+              </div>
+            ))}
+          </div>
         )}
-      </div>
+
+        <div className="school-form-submit">
+          <span className="small muted">
+            {pending.length > 0 ? `Ready to send: ${pending.join(', ')}` : allDone ? 'Everything is received — thank you!' : 'Fill in any part above, then press Submit.'}
+          </span>
+          <button type="submit" disabled={submitting || pending.length === 0}>
+            {submitting ? 'Submitting…' : 'Submit school details'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
-
-type PartProps = { info: SchoolDetailsInfo; schoolId: string; token: string; onSaved: () => Promise<unknown> };
 
 function Part({ n, title, done, doneText, children }: { n: number; title: string; done: boolean; doneText?: string; children: ReactNode }) {
   return (
@@ -103,107 +269,26 @@ function Part({ n, title, done, doneText, children }: { n: number; title: string
   );
 }
 
-/** Submit state shared by every part: busy flag, error, success message. */
-function useSubmit(onSaved: () => Promise<unknown>) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  async function submit(fn: () => Promise<string>) {
-    setBusy(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const message = await fn();
-      await onSaved(); // refresh progress + badges first, so the thank-you never shows beside a stale "To do"
-      setSuccess(message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save — please try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-  const messages = (
-    <>
-      {success && <p className="success small">{success}</p>}
-      {error && <p className="error small">{error}</p>}
-    </>
-  );
-  return { busy, submit, messages };
-}
-
-function TeachersPart({ info, schoolId, token, onSaved }: PartProps) {
-  const [rows, setRows] = useState(rowsOf(emptyTeacher, 5));
-  const { busy, submit, messages } = useSubmit(onSaved);
-  const filled = rows.filter((r) => r.name.trim());
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submit(async () => {
-      const { added } = await api.submitTeacherForm(schoolId, token, filled);
-      setRows(rowsOf(emptyTeacher, 5));
-      return `Thank you! ${added} teacher(s) received.`;
-    });
-  };
-  return (
-    <Part n={1} title="Teacher details" done={info.teachersOnFile > 0} doneText={`${info.teachersOnFile} received`}>
-      <form onSubmit={onSubmit}>
-        <p className="muted small">
-          One row per teacher — only the name is required. Have a list in Excel or Google Sheets? Copy the rows and paste them into the first Name box.
-          {info.teachersOnFile > 0 && ' You can add more teachers anytime.'}
-        </p>
-        <RowsTable columns={TEACHER_COLUMNS} rows={rows} setRows={setRows} emptyRow={emptyTeacher} maxRows={100} rowLabel="Teacher" />
-        <button type="submit" disabled={busy || filled.length === 0}>
-          {busy ? 'Submitting…' : filled.length > 0 ? `Submit ${filled.length} teacher${filled.length === 1 ? '' : 's'}` : 'Submit teachers'}
-        </button>
-        {messages}
-      </form>
-    </Part>
-  );
-}
-
-function StudentsPart({ info, schoolId, token, onSaved }: PartProps) {
-  const [rows, setRows] = useState(rowsOf(emptyStudent, 10));
-  const { busy, submit, messages } = useSubmit(onSaved);
-  const filled = rows.filter((r) => r.name.trim());
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submit(async () => {
-      const { added } = await api.submitStudentsForm(schoolId, token, filled);
-      setRows(rowsOf(emptyStudent, 10));
-      return `Thank you! ${added} student(s) received.`;
-    });
-  };
-  return (
-    <Part n={2} title="Student details" done={info.studentsOnFile > 0} doneText={`${info.studentsOnFile} received`}>
-      <form onSubmit={onSubmit}>
-        <p className="muted small">
-          Name, grade and section of the students joining the program — used to create their LMS logins. Easiest: copy the Name, Grade and Section columns from your Excel sheet and paste them into the first Name box.
-          You can send one class at a time.
-        </p>
-        <RowsTable columns={STUDENT_COLUMNS} rows={rows} setRows={setRows} emptyRow={emptyStudent} maxRows={500} rowLabel="Student" />
-        <button type="submit" disabled={busy || filled.length === 0}>
-          {busy ? 'Submitting…' : filled.length > 0 ? `Submit ${filled.length} student${filled.length === 1 ? '' : 's'}` : 'Submit students'}
-        </button>
-        {messages}
-      </form>
-    </Part>
-  );
-}
-
-function LogoPart({ info, schoolId, token, onSaved }: PartProps) {
+// The logo uploads the moment it's picked (no Submit needed), with the
+// co-branded partnership logo made from it right here in the browser.
+function LogoPart({ info, schoolId, token, onSaved }: { info: SchoolDetailsInfo; schoolId: string; token: string; onSaved: () => Promise<unknown> }) {
   const [preview, setPreview] = useState<string | null>(null);
-  const { busy, submit, messages } = useSubmit(onSaved);
-  const onFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    submit(async () => {
+    setStatus('uploading');
+    try {
       const logo = await resizeImageFile(file);
       setPreview(logo);
-      // The co-branded partnership logo is made from it right here.
       const cobranded = await makeCobrandedLogo(logo, info.schoolName).catch(() => undefined);
       await api.uploadTeacherFormLogo(schoolId, token, logo, cobranded);
-      return 'Thank you — logo received.';
-    });
+      await onSaved();
+      setStatus('done');
+    } catch {
+      setStatus('error');
+    }
   };
   return (
     <Part n={3} title="School logo" done={info.hasLogo} doneText="Received">
@@ -212,98 +297,15 @@ function LogoPart({ info, schoolId, token, onSaved }: PartProps) {
           {preview ? <img src={preview} alt="Your school logo" /> : <span className="muted small">{info.hasLogo ? '✓ Received' : 'Logo'}</span>}
         </div>
         <div>
-          <p className="muted small">For our co-branded partnership logo. PNG or JPG.</p>
+          <p className="muted small">For our co-branded partnership logo. PNG or JPG — it uploads as soon as you choose it.</p>
           <label className="button-like">
-            {busy ? 'Uploading…' : info.hasLogo ? 'Upload a new logo' : 'Upload logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} disabled={busy} hidden />
+            {status === 'uploading' ? 'Uploading…' : info.hasLogo ? 'Upload a new logo' : 'Choose logo'}
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} disabled={status === 'uploading'} hidden />
           </label>
-          {messages}
+          {status === 'done' && <p className="success small">Thank you — logo received.</p>}
+          {status === 'error' && <p className="error small">Couldn’t upload that image — please try a PNG or JPG under 1.5 MB.</p>}
         </div>
       </div>
-    </Part>
-  );
-}
-
-function InfraPart({ info, schoolId, token, onSaved }: PartProps) {
-  const [form, setForm] = useState({
-    labCapacity: info.infra?.labCapacity ?? '',
-    internetConnectivity: info.infra?.internetConnectivity ?? '',
-    systemsPerStudent: info.infra?.systemsPerStudent ?? '',
-  });
-  const { busy, submit, messages } = useSubmit(onSaved);
-  const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submit(async () => {
-      await api.saveSchoolFormInfra(schoolId, token, form);
-      return 'Thank you — lab details saved.';
-    });
-  };
-  return (
-    <Part n={4} title="Computer lab & internet" done={!!info.infra} doneText="Received">
-      <form onSubmit={onSubmit} className="school-part-grid">
-        <p className="muted small span-all">Helps us plan the right mix of theory and practical sessions.</p>
-        <label>
-          Computers in the lab
-          <input placeholder="e.g. 30 computers" value={form.labCapacity} onChange={set('labCapacity')} />
-        </label>
-        <label>
-          Internet connection
-          <select value={form.internetConnectivity} onChange={set('internetConnectivity')}>
-            <option value="">Choose…</option>
-            <option value="Good — works well">Good — works well</option>
-            <option value="Slow or unreliable">Slow or unreliable</option>
-            <option value="No internet in the lab">No internet in the lab</option>
-          </select>
-        </label>
-        <label>
-          Students per computer
-          <input placeholder="e.g. 2" value={form.systemsPerStudent} onChange={set('systemsPerStudent')} />
-        </label>
-        <div className="span-all">
-          <button type="submit" disabled={busy || !(form.labCapacity || form.internetConnectivity || form.systemsPerStudent)}>
-            {busy ? 'Saving…' : info.infra ? 'Update lab details' : 'Save lab details'}
-          </button>
-          {messages}
-        </div>
-      </form>
-    </Part>
-  );
-}
-
-function OrientationPart({ info, schoolId, token, onSaved }: PartProps) {
-  const [date, setDate] = useState(info.orientation?.date.slice(0, 10) ?? '');
-  const [note, setNote] = useState(info.orientation?.note ?? '');
-  const { busy, submit, messages } = useSubmit(onSaved);
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    submit(async () => {
-      await api.saveSchoolFormOrientation(schoolId, token, { date, note });
-      return 'Thank you — your account manager will confirm the session with you.';
-    });
-  };
-  const picked = info.orientation && new Date(info.orientation.date).toLocaleDateString('en-IN', { dateStyle: 'long' });
-  return (
-    <Part n={5} title="Orientation date" done={!!info.orientation} doneText={picked ?? 'Done'}>
-      <form onSubmit={onSubmit} className="school-part-grid">
-        <p className="muted small span-all">
-          Pick a day that suits you for the leadership orientation and teacher induction session. Your account manager will confirm it.
-        </p>
-        <label>
-          Preferred date
-          <input type="date" min={tomorrow()} value={date} onChange={(e) => setDate(e.target.value)} required />
-        </label>
-        <label>
-          Preferred time or note (optional)
-          <input placeholder="e.g. 10 AM, after assembly" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} />
-        </label>
-        <div className="span-all">
-          <button type="submit" disabled={busy || !date}>
-            {busy ? 'Saving…' : info.orientation ? 'Change date' : 'Save date'}
-          </button>
-          {messages}
-        </div>
-      </form>
     </Part>
   );
 }
