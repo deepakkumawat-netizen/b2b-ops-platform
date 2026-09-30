@@ -129,6 +129,7 @@ export function AgentSuggestionsPage() {
           `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
           `Auto-sent ${result.workshopReminder} workshop reminder(s), ${result.workshopFeedbackNag} feedback nag(s), ` +
           `${result.schoolDetailsReminder} school details reminder(s), ` +
+          `scheduled ${result.workshopScheduler} committed workshop(s), ` +
           `handled ${result.workshopRescheduler} workshop date change request(s), ` +
           `synced ${result.googleCalendar} workshop(s) and holiday(s) to Google Calendar, ` +
           `and opened ${result.renewalCycleOpener} renewal cycle(s) automatically. ` +

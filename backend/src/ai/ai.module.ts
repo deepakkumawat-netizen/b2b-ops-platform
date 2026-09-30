@@ -17,6 +17,7 @@ import { CompetitionFollowupAgentService } from './agents/competition-followup-a
 import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
 import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
 import { WorkshopReschedulerAgentService } from './agents/workshop-rescheduler-agent.service';
+import { WorkshopSchedulerAgentService } from './agents/workshop-scheduler-agent.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
@@ -40,6 +41,7 @@ import { CronController } from './cron.controller';
     DataCompletenessAgentService,
     SchoolDetailsReminderAgentService,
     WorkshopReschedulerAgentService,
+    WorkshopSchedulerAgentService,
     AgentRunnerService,
     AgentSuggestionsService,
   ],

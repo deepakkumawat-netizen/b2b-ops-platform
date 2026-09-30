@@ -238,7 +238,8 @@ export type StaffNotification = {
     | 'WORKSHOP_DATES_UNAVAILABLE'
     | 'WORKSHOP_NEEDS_MANAGER'
     | 'SCHOOL_HOLIDAY_ADDED'
-    | 'SCHOOL_HOLIDAY_CLASH';
+    | 'SCHOOL_HOLIDAY_CLASH'
+    | 'WORKSHOPS_AUTO_SCHEDULED';
   title: string;
   detail: string | null;
   createdAt: string;
@@ -404,6 +405,7 @@ export type AgentName =
   | 'dataCompleteness'
   | 'schoolDetailsReminder'
   | 'workshopRescheduler'
+  | 'workshopScheduler'
   | 'googleCalendar';
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
 

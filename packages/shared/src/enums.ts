@@ -147,6 +147,9 @@ export const AgentKey = {
   // workshop link) to move a workshop, moves it to one of the school's
   // preferred dates and emails the school and its manager.
   WORKSHOP_RESCHEDULER: 'WORKSHOP_RESCHEDULER',
+  // School-facing and fully autonomous: once a school reaches Phase 8, puts
+  // the workshops Sales committed to on the calendar and emails the school.
+  WORKSHOP_SCHEDULER: 'WORKSHOP_SCHEDULER',
 } as const;
 export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
 
@@ -163,6 +166,7 @@ export const SuggestionType = {
   SCHOOL_DETAILS_REMINDER_SENT: 'SCHOOL_DETAILS_REMINDER_SENT',
   WORKSHOP_AUTO_RESCHEDULED: 'WORKSHOP_AUTO_RESCHEDULED',
   WORKSHOP_RESCHEDULE_NEEDS_MANAGER: 'WORKSHOP_RESCHEDULE_NEEDS_MANAGER',
+  WORKSHOPS_AUTO_SCHEDULED: 'WORKSHOPS_AUTO_SCHEDULED',
 } as const;
 export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
 

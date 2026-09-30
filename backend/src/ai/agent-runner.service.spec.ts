@@ -20,6 +20,7 @@ const CTOR_ORDER = [
   'dataCompleteness',
   'schoolDetailsReminder',
   'workshopRescheduler',
+  'workshopScheduler',
   'googleCalendar',
   'checklist',
 ] as const;
