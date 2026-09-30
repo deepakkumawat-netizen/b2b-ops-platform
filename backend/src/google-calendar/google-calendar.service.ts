@@ -98,6 +98,8 @@ export class GoogleCalendarService {
   private lastError: string | null = null;
   private lastSyncedAt: Date | null = null;
   private lastAccess: AccessRow[] = [];
+  /** The sync in progress for each workshop / holiday, so a newer one waits for it. */
+  private running = new Map<string, Promise<void>>();
   /** Read once: undefined until first use, null when not set up. */
   private account: ServiceAccount | null | undefined;
 
@@ -402,15 +404,25 @@ export class GoogleCalendarService {
     return this.token.value;
   }
 
+  // Syncs of the same thing run one after another, never at once: a holiday
+  // added and removed seconds apart would otherwise race, and the slower
+  // "add" could put the event back after the "remove". Each run re-reads the
+  // database, so the last one always leaves Google matching the tool.
   private async safely(what: string, fn: () => Promise<void>) {
-    try {
-      await fn();
-      this.lastError = null;
-      this.lastSyncedAt = new Date();
-    } catch (err) {
-      this.lastError = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Google Calendar sync failed for ${what}: ${this.lastError}`);
-    }
+    const previous = this.running.get(what) ?? Promise.resolve();
+    const run = previous.then(async () => {
+      try {
+        await fn();
+        this.lastError = null;
+        this.lastSyncedAt = new Date();
+      } catch (err) {
+        this.lastError = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Google Calendar sync failed for ${what}: ${this.lastError}`);
+      }
+    });
+    this.running.set(what, run);
+    await run;
+    if (this.running.get(what) === run) this.running.delete(what);
   }
 
   private calendarId() {

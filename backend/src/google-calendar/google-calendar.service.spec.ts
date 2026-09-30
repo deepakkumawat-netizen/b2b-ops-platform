@@ -105,3 +105,80 @@ describe('GoogleCalendarService.syncWorkshop', () => {
     expect((await service.status()).lastError).toContain('Invalid JWT');
   });
 });
+
+describe('GoogleCalendarService.syncAccess', () => {
+  const env: Record<string, string> = {
+    GOOGLE_CALENDAR_ID: 'main@group.calendar.google.com',
+    GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'bot@p.iam.gserviceaccount.com', private_key: privateKey }),
+  };
+  const staff = [
+    { id: 'a', name: 'Admin', email: 'admin@x.com', role: 'SUPER_ADMIN', isActive: true, googleCalendarId: null },
+    { id: 'm', name: 'Manager', email: 'am@x.com', role: 'ACCOUNT_MANAGER', isActive: true, googleCalendarId: null },
+    { id: 'g', name: 'Gone', email: 'gone@x.com', role: 'SALES', isActive: false, googleCalendarId: null },
+    { id: 'o', name: 'Old AM now Sales', email: 'moved@x.com', role: 'SALES', isActive: true, googleCalendarId: 'old-am-cal' },
+  ];
+
+  it('shares by role: main calendar for non-managers, own calendar for managers, none for the deactivated', async () => {
+    const calls: string[] = [];
+    global.fetch = jest.fn(async (url: string | URL, init?: RequestInit) => {
+      const u = decodeURIComponent(String(url));
+      const method = init?.method ?? 'GET';
+      if (u.includes('oauth2')) return new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }));
+      calls.push(`${method} ${u.replace('https://www.googleapis.com/calendar/v3', '')}${init?.body && method !== 'GET' ? ` ${init.body}` : ''}`);
+      if (method === 'GET') {
+        // gone@ still has the view access we gave earlier; the owner must never be touched.
+        return new Response(JSON.stringify({ items: [{ role: 'reader', scope: { type: 'user', value: 'gone@x.com' } }, { role: 'owner', scope: { type: 'user', value: 'boss@x.com' } }] }));
+      }
+      if (method === 'POST' && u.endsWith('/calendars')) return new Response(JSON.stringify({ id: 'am-cal' }));
+      return new Response('{}');
+    }) as unknown as typeof fetch;
+    const prisma = { staff: { findMany: jest.fn().mockResolvedValue(staff), update: jest.fn() } };
+    const service = new GoogleCalendarService(prisma as unknown as PrismaService, { get: (k: string) => env[k] } as unknown as ConfigService);
+
+    const rows = await service.syncAccess();
+
+    expect(rows.map((r) => [r.email, r.access])).toEqual([
+      ['admin@x.com', 'all schools'],
+      ['am@x.com', 'own schools'],
+      ['gone@x.com', 'none'],
+      ['moved@x.com', 'all schools'],
+    ]);
+    const main = '/calendars/main@group.calendar.google.com/acl';
+    expect(calls).toContain(`POST ${main}?sendNotifications=true {"role":"reader","scope":{"type":"user","value":"admin@x.com"}}`);
+    expect(calls).toContain(`DELETE ${main}/user:gone@x.com`);
+    expect(calls.some((c) => c.includes('boss@x.com') && !c.startsWith('GET'))).toBe(false);
+    // The manager gets a new calendar of their own, shared with them, not the main one.
+    expect(calls.some((c) => c.startsWith(`POST ${main}`) && c.includes('am@x.com'))).toBe(false);
+    expect(calls).toContain('POST /calendars/am-cal/acl?sendNotifications=true {"role":"reader","scope":{"type":"user","value":"am@x.com"}}');
+    expect(prisma.staff.update).toHaveBeenCalledWith({ where: { id: 'm' }, data: { googleCalendarId: 'am-cal' } });
+    // Someone who stopped being a manager loses their old manager calendar.
+    expect(calls).toContain('DELETE /calendars/old-am-cal');
+    expect(prisma.staff.update).toHaveBeenCalledWith({ where: { id: 'o' }, data: { googleCalendarId: null } });
+  });
+});
+
+describe('GoogleCalendarService — quick changes to the same event', () => {
+  it('runs them one after another, so the latest change wins', async () => {
+    const env: Record<string, string> = {
+      GOOGLE_CALENDAR_ID: 'main@group.calendar.google.com',
+      GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'bot@p.iam.gserviceaccount.com', private_key: privateKey }),
+    };
+    const order: string[] = [];
+    global.fetch = jest.fn(async (url: string | URL, init?: RequestInit) => {
+      if (String(url).includes('oauth2')) return new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }));
+      // Google is slow to answer the first update.
+      if (init?.method === 'PUT') await new Promise((r) => setTimeout(r, 50));
+      order.push(init?.method ?? 'GET');
+      return new Response('{}', { status: init?.method === 'PUT' ? 404 : 200 });
+    }) as unknown as typeof fetch;
+    // Scheduled when the first sync reads it, cancelled by the time the second does.
+    const findUnique = jest.fn().mockResolvedValueOnce(workshop).mockResolvedValueOnce({ ...workshop, status: WorkshopStatus.CANCELLED });
+    const prisma = { workshop: { findUnique }, staff: { findMany: jest.fn().mockResolvedValue([]) } };
+    const service = new GoogleCalendarService(prisma as unknown as PrismaService, { get: (k: string) => env[k] } as unknown as ConfigService);
+
+    await Promise.all([service.syncWorkshop('w1'), service.syncWorkshop('w1')]);
+
+    // Create (PUT → 404, then POST) fully finishes before the delete, so the event ends up removed.
+    expect(order).toEqual(['PUT', 'POST', 'DELETE']);
+  });
+});
