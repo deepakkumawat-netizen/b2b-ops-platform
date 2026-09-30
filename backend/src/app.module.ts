@@ -19,6 +19,10 @@ import { RenewalsModule } from './renewals/renewals.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
+import { WorkshopResponseModule } from './workshop-response/workshop-response.module';
+import { StaffNotificationsModule } from './staff-notifications/staff-notifications.module';
+import { CalendarModule } from './calendar/calendar.module';
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ActivityModule } from './activity/activity.module';
 import { AutomationModule } from './automation/automation.module';
 import { TeacherFormModule } from './teacher-form/teacher-form.module';
@@ -64,6 +68,10 @@ import { GeoModule } from './geo/geo.module';
     DashboardModule,
     NotificationsModule,
     AiModule,
+    WorkshopResponseModule,
+    StaffNotificationsModule,
+    CalendarModule,
+    GoogleCalendarModule,
     StaffModule,
     ReportsModule,
   ],

@@ -221,6 +221,74 @@ export type Workshop = {
   feedbackReceivedAt: string | null;
   feedbackSummary: string | null;
   cancelReason: string | null;
+  schoolConfirmedAt: string | null;
+  changeRequestedAt: string | null;
+  changeReason: string | null;
+  preferredDates: string[];
+  autoRescheduleCount: number;
+};
+
+export type StaffNotification = {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  kind:
+    | 'WORKSHOP_CONFIRMED'
+    | 'WORKSHOP_MOVED'
+    | 'WORKSHOP_DATES_UNAVAILABLE'
+    | 'WORKSHOP_NEEDS_MANAGER'
+    | 'SCHOOL_HOLIDAY_ADDED'
+    | 'SCHOOL_HOLIDAY_CLASH';
+  title: string;
+  detail: string | null;
+  createdAt: string;
+};
+export type CalendarWorkshop = {
+  id: string;
+  topic: string;
+  targetGrades: string | null;
+  scheduledAt: string;
+  status: WorkshopStatus;
+  schoolConfirmed: boolean;
+};
+export type CalendarHoliday = { date: string; note: string | null };
+export type GoogleCalendarStatus = {
+  configured: boolean;
+  calendarId: string | null;
+  serviceAccountEmail: string | null;
+  openUrl: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  /** 'own' for an account manager (only their schools), 'all' for everyone else. */
+  myCalendar: 'own' | 'all';
+  /** Super Admin only: who can see what in Google Calendar. */
+  access?: { name: string; email: string; role: string; access: 'all schools' | 'own schools' | 'none'; error: string | null }[];
+};
+export type StaffCalendar = {
+  workshops: (CalendarWorkshop & { schoolId: string; schoolName: string; changeRequested: boolean })[];
+  holidays: (CalendarHoliday & { schoolId: string; schoolName: string })[];
+};
+export type SchoolCalendar = {
+  schoolName: string;
+  today: string;
+  workshops: (CalendarWorkshop & { responsePath: string | null })[];
+  holidays: CalendarHoliday[];
+};
+
+export type StaffNotificationList = { unread: number; seenAt: string | null; items: StaffNotification[] };
+
+/** What the school sees on its "confirm or change this date" page. */
+export type WorkshopResponseInfo = {
+  schoolName: string;
+  topic: string;
+  targetGrades: string | null;
+  scheduledAt: string;
+  live: boolean;
+  status: WorkshopStatus;
+  schoolConfirmedAt: string | null;
+  changePending: boolean;
+  earliestDate: string;
+  outcome?: 'rescheduled' | 'asked_again' | 'needs_manager' | 'nothing';
 };
 
 export type EngagementLog = {
@@ -332,7 +400,9 @@ export type AgentName =
   | 'renewalStalled'
   | 'competitionFollowup'
   | 'dataCompleteness'
-  | 'schoolDetailsReminder';
+  | 'schoolDetailsReminder'
+  | 'workshopRescheduler'
+  | 'googleCalendar';
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
 
 export const api = {
@@ -407,6 +477,27 @@ export const api = {
     request<{ sent: boolean }>(`/schools/${schoolId}/teachers/request-details`, { method: 'POST' }),
 
   // Public teacher-details form (no login — the school opens it from the emailed link).
+  getGoogleCalendarStatus: () => request<GoogleCalendarStatus>('/google-calendar/status'),
+  syncGoogleCalendar: () => request<GoogleCalendarStatus & { synced: number }>('/google-calendar/sync', { method: 'POST' }),
+  getStaffCalendar: (from: string, to: string) => request<StaffCalendar>(`/calendar?from=${from}&to=${to}`),
+  getSchoolCalendarLink: (schoolId: string) => request<{ url: string }>(`/schools/${schoolId}/calendar-link`),
+  sendSchoolCalendarLink: (schoolId: string) => request<{ sent: boolean }>(`/schools/${schoolId}/calendar-link/send`, { method: 'POST' }),
+  getSchoolCalendar: (schoolId: string, token: string) => request<SchoolCalendar>(`/public/school-calendar/${schoolId}/${token}`),
+  addSchoolHoliday: (schoolId: string, token: string, date: string, note?: string) =>
+    request<{ clashes: { id: string; topic: string; scheduledAt: string }[] }>(`/public/school-calendar/${schoolId}/${token}/holidays`, {
+      method: 'POST',
+      body: JSON.stringify({ date, note }),
+    }),
+  removeSchoolHoliday: (schoolId: string, token: string, date: string) =>
+    request<{ removed: number }>(`/public/school-calendar/${schoolId}/${token}/holidays/${date}`, { method: 'DELETE' }),
+  listStaffNotifications: () => request<StaffNotificationList>('/staff-notifications'),
+  markStaffNotificationsSeen: () => request<{ success: boolean }>('/staff-notifications/seen', { method: 'POST' }),
+  getWorkshopResponse: (workshopId: string, token: string) =>
+    request<WorkshopResponseInfo>(`/public/workshop-response/${workshopId}/${token}`),
+  confirmWorkshopDate: (workshopId: string, token: string) =>
+    request<WorkshopResponseInfo>(`/public/workshop-response/${workshopId}/${token}/confirm`, { method: 'POST' }),
+  requestWorkshopChange: (workshopId: string, token: string, dto: { reason?: string; preferredDates: string[] }) =>
+    request<WorkshopResponseInfo>(`/public/workshop-response/${workshopId}/${token}/change`, { method: 'POST', body: JSON.stringify(dto) }),
   getTeacherForm: (schoolId: string, token: string) =>
     request<SchoolDetailsInfo>(`/public/teacher-form/${schoolId}/${token}`),
   submitStudentsForm: (schoolId: string, token: string, students: StudentFormRow[]) =>
@@ -446,6 +537,8 @@ export const api = {
     request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/remind`, { method: 'POST' }),
   completeWorkshop: (schoolId: string, workshopId: string) =>
     request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/complete`, { method: 'POST' }),
+  rescheduleWorkshop: (schoolId: string, workshopId: string, dto: { scheduledAt: string; reason?: string }) =>
+    request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/reschedule`, { method: 'POST', body: JSON.stringify(dto) }),
   cancelWorkshop: (schoolId: string, workshopId: string, cancelReason: string) =>
     request<Workshop>(`/schools/${schoolId}/workshops/${workshopId}/cancel`, {
       method: 'POST',

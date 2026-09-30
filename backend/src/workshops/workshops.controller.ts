@@ -8,6 +8,7 @@ import { WorkshopsService } from './workshops.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { CancelWorkshopDto } from './dto/cancel-workshop.dto';
+import { RescheduleWorkshopDto } from './dto/reschedule-workshop.dto';
 import { RecordFeedbackDto } from './dto/record-feedback.dto';
 import { ActivityService } from '../activity/activity.service';
 import { SyncChecklistInterceptor } from '../automation/sync-checklist.interceptor';
@@ -70,6 +71,19 @@ export class WorkshopsController {
     await assertSchoolAccessById(this.prisma, staff, schoolId);
     const w = await this.workshops.complete(schoolId, workshopId);
     await this.activity.record(schoolId, staff, `Workshop completed: ${w.topic}`);
+    return w;
+  }
+
+  @Post(':workshopId/reschedule')
+  async reschedule(
+    @Param('schoolId') schoolId: string,
+    @Param('workshopId') workshopId: string,
+    @Body() dto: RescheduleWorkshopDto,
+    @CurrentStaff() staff: StaffJwtPayload,
+  ) {
+    await assertSchoolAccessById(this.prisma, staff, schoolId);
+    const w = await this.workshops.reschedule(schoolId, workshopId, dto);
+    await this.activity.record(schoolId, staff, `Workshop rescheduled: ${w.topic}`, dto.reason);
     return w;
   }
 

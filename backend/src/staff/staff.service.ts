@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { StaffRole } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 
@@ -22,6 +23,7 @@ export class StaffService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private google: GoogleCalendarService,
   ) {}
 
   list() {
@@ -74,6 +76,8 @@ export class StaffService {
         body: `Hi ${updated.name},\n\nYour account has been approved with the role ${updated.role}. You can now sign in with the email and password you chose.\n\nTeam codevidhya`,
       });
     }
+    // Role or active changes decide who sees which Google Calendar.
+    void this.google.syncAccess().catch(() => undefined);
     return updated;
   }
 

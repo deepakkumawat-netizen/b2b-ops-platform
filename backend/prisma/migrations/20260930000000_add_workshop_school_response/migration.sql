@@ -1,0 +1,13 @@
+-- AlterEnum
+ALTER TYPE "AgentKey" ADD VALUE 'WORKSHOP_RESCHEDULER';
+
+-- AlterEnum
+ALTER TYPE "SuggestionType" ADD VALUE 'WORKSHOP_AUTO_RESCHEDULED';
+ALTER TYPE "SuggestionType" ADD VALUE 'WORKSHOP_RESCHEDULE_NEEDS_MANAGER';
+
+-- AlterTable
+ALTER TABLE "Workshop" ADD COLUMN     "autoRescheduleCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "changeReason" TEXT,
+ADD COLUMN     "changeRequestedAt" TIMESTAMP(3),
+ADD COLUMN     "preferredDates" TIMESTAMP(3)[] DEFAULT ARRAY[]::TIMESTAMP(3)[],
+ADD COLUMN     "schoolConfirmedAt" TIMESTAMP(3);

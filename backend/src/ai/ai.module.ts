@@ -16,6 +16,7 @@ import { RenewalStalledAgentService } from './agents/renewal-stalled-agent.servi
 import { CompetitionFollowupAgentService } from './agents/competition-followup-agent.service';
 import { DataCompletenessAgentService } from './agents/data-completeness-agent.service';
 import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
+import { WorkshopReschedulerAgentService } from './agents/workshop-rescheduler-agent.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
@@ -38,8 +39,11 @@ import { CronController } from './cron.controller';
     CompetitionFollowupAgentService,
     DataCompletenessAgentService,
     SchoolDetailsReminderAgentService,
+    WorkshopReschedulerAgentService,
     AgentRunnerService,
     AgentSuggestionsService,
   ],
+  // The public workshop link runs the rescheduler the moment a school asks.
+  exports: [WorkshopReschedulerAgentService],
 })
 export class AiModule {}

@@ -22,6 +22,11 @@ function buttonHtml({ label, url }: MailButton): string {
   );
 }
 
+/** Makes plain links in a line (already HTML-escaped) clickable. */
+function linkify(escaped: string): string {
+  return escaped.replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#4f46e5;word-break:break-all">${url}</a>`);
+}
+
 /** The line that is exactly the button's URL becomes the button; if the
  * text never shows the URL on its own line, the button goes at the end. */
 export function emailHtml(text: string, button: MailButton): string {
@@ -31,7 +36,7 @@ export function emailHtml(text: string, button: MailButton): string {
       placed = true;
       return buttonHtml(button);
     }
-    return `${escapeHtml(line)}<br>`;
+    return `${linkify(escapeHtml(line))}<br>`;
   });
   if (!placed) parts.push(buttonHtml(button));
   return (

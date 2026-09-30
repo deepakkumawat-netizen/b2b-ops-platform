@@ -16,6 +16,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
 import { StaffJwtPayload } from '../auth/jwt-payload.interface';
 import { teacherFormUrl } from '../teacher-form/teacher-form-token';
+import { schoolCalendarUrl } from '../calendar/school-calendar-token';
 import { SCHOOL_DETAILS_PARTS } from '../teacher-form/school-details';
 import { formatDateInZone } from '../common/time';
 
@@ -174,8 +175,15 @@ export class SchoolAutomationService {
         `Dear ${school.ownerName ?? 'Team'},\n\n` +
         `Welcome aboard! This confirms our partnership for ${school.productProgram ?? 'your program'}. ` +
         `Your account manager will be your point of contact for everything ahead.\n\n` +
+        `Your workshop calendar shows every workshop date as we plan them. Please mark your school holidays and exam weeks there, ` +
+        `so we never schedule a workshop on them: ${this.schoolCalendarLink(school.id)}\n\n` +
         `Looking forward to a great year together.\n\nTeam codevidhya`,
     });
+  }
+
+  /** The school's workshop calendar page (its dates, plus the holidays it marks). */
+  schoolCalendarLink(schoolId: string) {
+    return schoolCalendarUrl(this.config.get<string>('APP_URL') || 'http://localhost:5173', schoolId, this.config.getOrThrow<string>('JWT_ACCESS_SECRET'));
   }
 
   /** Emails the school the link to its school details page — teachers,
@@ -328,10 +336,20 @@ export class SchoolAutomationService {
     );
   }
 
+  /** Who hears about a school: its active account manager, or admins when it has none. */
+  async managerRecipients(schoolId: string): Promise<{ recipients: string[]; managerName: string | null }> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { assignedAccountManager: { select: { name: true, email: true, isActive: true } } },
+    });
+    const manager = school?.assignedAccountManager?.isActive ? school.assignedAccountManager : null;
+    return manager ? { recipients: [manager.email], managerName: manager.name } : { recipients: await this.adminAlertRecipients(), managerName: null };
+  }
+
   // ADMIN_ALERT_EMAILS (comma-separated) wins when set — e.g. a shared ops
   // inbox, or while the only Super Admins are seeded demo accounts whose
   // addresses nobody reads. Otherwise every active Super Admin.
-  private async adminAlertRecipients(): Promise<string[]> {
+  async adminAlertRecipients(): Promise<string[]> {
     const configured = (this.config.get<string>('ADMIN_ALERT_EMAILS') ?? '')
       .split(',')
       .map((e) => e.trim())

@@ -38,7 +38,7 @@ export class DashboardService {
       where: {
         schoolId: { in: schoolIds },
         scheduledAt: { gte: now, lte: windowEnd },
-        status: { in: [WorkshopStatus.SCHEDULED, WorkshopStatus.CONFIRMED] },
+        status: { in: [WorkshopStatus.SCHEDULED, WorkshopStatus.CONFIRMED, WorkshopStatus.RESCHEDULED] },
       },
       include: { school: { select: { name: true } } },
       orderBy: { scheduledAt: 'asc' },

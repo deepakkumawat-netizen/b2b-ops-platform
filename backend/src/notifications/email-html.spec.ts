@@ -12,6 +12,11 @@ describe('emailHtml', () => {
     expect(html.split(`href="${button.url}"`).length - 1).toBe(2);
   });
 
+  it('makes other links in the text clickable', () => {
+    const html = emailHtml(`Your calendar: https://app.test/calendar/s1/tok`, button);
+    expect(html).toContain('Your calendar: <a href="https://app.test/calendar/s1/tok"');
+  });
+
   it('adds the button at the end when the text has no link line', () => {
     const html = emailHtml('Hello', button);
     expect(html.indexOf('Hello')).toBeLessThan(html.indexOf('Fill in teacher details'));

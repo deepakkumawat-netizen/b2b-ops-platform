@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PhaseTasksService } from '../phase-tasks/phase-tasks.service';
 import { ActivityService } from '../activity/activity.service';
 import { SchoolAutomationService } from '../automation/school-automation.service';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 const sales = { sub: 'sales-1', role: StaffRole.SALES };
 const am = { sub: 'am-1', role: StaffRole.ACCOUNT_MANAGER };
@@ -25,6 +26,7 @@ function makeService(staffRow: Record<string, unknown> | null) {
     {} as PhaseTasksService,
     activity as unknown as ActivityService,
     automation as unknown as SchoolAutomationService,
+    { syncSchool: jest.fn() } as unknown as GoogleCalendarService,
   );
   return { service, prisma, activity };
 }

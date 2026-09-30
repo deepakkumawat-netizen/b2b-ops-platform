@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   // Render can't route IPv6 to Neon's endpoint, and Prisma's default Rust
   // query engine resolves/connects to the DB itself — bypassing Node's dns
   // module entirely, so NODE_OPTIONS=--dns-result-order=ipv4first has no
@@ -27,18 +27,23 @@ enum StaffRole {
 }
 
 model Staff {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  role         StaffRole
-  isActive     Boolean   @default(true)
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  passwordHash        String
+  role                StaffRole
+  isActive            Boolean   @default(true)
   // Null = self-signup still awaiting a Super Admin's approval (isActive is
   // false until then). Set = approved at least once; isActive=false after
   // that means deliberately deactivated.
-  approvedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  approvedAt          DateTime?
+  // The top-bar bell counts notifications newer than this as unread.
+  notificationsSeenAt DateTime?
+  // An account manager's own Google Calendar (only their schools); made and
+  // shared with them by GoogleCalendarService. Null for everyone else.
+  googleCalendarId    String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   accountManagerSchools School[]          @relation("AccountManager")
   salesRepSchools       School[]          @relation("SalesRep")
@@ -75,7 +80,7 @@ enum SchoolStatus {
 }
 
 model School {
-  id                       String                @id @default(cuid())
+  id                       String               @id @default(cuid())
   name                     String
   city                     String?
   state                    String?
@@ -106,18 +111,20 @@ model School {
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
 
-  phaseTasks        SchoolPhaseTask[]
-  teachers          Teacher[]
-  infraDiagnostic   InfraDiagnostic?
-  workshops         Workshop[]
-  engagementLogs    EngagementLog[]
-  competitions      CompetitionParticipation[]
-  renewalCycles     RenewalCycle[]
-  emailLogs         EmailLog[]
-  agentSuggestions  AgentSuggestion[]
-  activities        SchoolActivity[]
-  assets            SchoolAsset[]
-  students          Student[]
+  phaseTasks         SchoolPhaseTask[]
+  teachers           Teacher[]
+  infraDiagnostic    InfraDiagnostic?
+  workshops          Workshop[]
+  engagementLogs     EngagementLog[]
+  competitions       CompetitionParticipation[]
+  renewalCycles      RenewalCycle[]
+  emailLogs          EmailLog[]
+  agentSuggestions   AgentSuggestion[]
+  activities         SchoolActivity[]
+  staffNotifications StaffNotification[]
+  blockedDates       SchoolBlockedDate[]
+  assets             SchoolAsset[]
+  students           Student[]
 }
 
 // ── Phase-task checklist engine ──────────────────────────────────────────
@@ -228,23 +235,31 @@ enum WorkshopStatus {
 }
 
 model Workshop {
-  id                 String         @id @default(cuid())
-  schoolId           String
-  school             School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  topic              String
-  targetGrades       String?
-  scheduledAt        DateTime
-  status             WorkshopStatus @default(SCHEDULED)
-  confirmationSentAt DateTime?
-  reminderSentAt     DateTime?
-  completedAt        DateTime?
-  feedbackFormSentAt DateTime?
-  feedbackNagSentAt  DateTime?
-  feedbackReceivedAt DateTime?
-  feedbackSummary    String?
-  cancelReason       String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  schoolId            String
+  school              School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  topic               String
+  targetGrades        String?
+  scheduledAt         DateTime
+  status              WorkshopStatus @default(SCHEDULED)
+  confirmationSentAt  DateTime?
+  reminderSentAt      DateTime?
+  completedAt         DateTime?
+  feedbackFormSentAt  DateTime?
+  feedbackNagSentAt   DateTime?
+  feedbackReceivedAt  DateTime?
+  feedbackSummary     String?
+  cancelReason        String?
+  // The school's answer from its workshop link (SOP 8.3 "ensure the school
+  // acknowledges"). A change request holds the school's preferred dates
+  // until the workshop rescheduler agent moves the workshop to one of them.
+  schoolConfirmedAt   DateTime?
+  changeRequestedAt   DateTime?
+  changeReason        String?
+  preferredDates      DateTime[]     @default([])
+  autoRescheduleCount Int            @default(0)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 }
 
 enum EngagementType {
@@ -355,6 +370,7 @@ enum AgentKey {
   COMPETITION_FOLLOWUP_ALERT
   DATA_COMPLETENESS_ALERT
   SCHOOL_DETAILS_REMINDER
+  WORKSHOP_RESCHEDULER
 }
 
 enum SuggestionType {
@@ -368,6 +384,8 @@ enum SuggestionType {
   COMPETITION_FOLLOWUP_NEEDED
   MISSING_HANDOVER_DATA
   SCHOOL_DETAILS_REMINDER_SENT
+  WORKSHOP_AUTO_RESCHEDULED
+  WORKSHOP_RESCHEDULE_NEEDS_MANAGER
 }
 
 enum SuggestionStatus {
@@ -379,19 +397,19 @@ enum SuggestionStatus {
 }
 
 model AgentSuggestion {
-  id                 String           @id @default(cuid())
-  schoolId           String
-  school             School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  agentKey           AgentKey
-  suggestionType     SuggestionType
-  draftSubject       String
-  draftBody          String
-  reasoning          String
-  status             SuggestionStatus @default(PENDING)
-  reviewedByStaffId  String?
-  reviewedByStaff    Staff?           @relation(fields: [reviewedByStaffId], references: [id])
-  reviewedAt         DateTime?
-  createdAt          DateTime         @default(now())
+  id                String           @id @default(cuid())
+  schoolId          String
+  school            School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  agentKey          AgentKey
+  suggestionType    SuggestionType
+  draftSubject      String
+  draftBody         String
+  reasoning         String
+  status            SuggestionStatus @default(PENDING)
+  reviewedByStaffId String?
+  reviewedByStaff   Staff?           @relation(fields: [reviewedByStaffId], references: [id])
+  reviewedAt        DateTime?
+  createdAt         DateTime         @default(now())
 }
 
 // ── Per-school audit trail ────────────────────────────────────────────────
@@ -411,4 +429,36 @@ model SchoolActivity {
   createdAt    DateTime @default(now())
 
   @@index([schoolId, createdAt])
+}
+
+// ── In-tool notifications (the top-bar bell) ──────────────────────────────
+// Things that happened without a staff member doing them, which someone
+// should notice: a school confirmed a workshop, or asked to move it and the
+// rescheduler agent acted. Who sees a row follows school access (an account
+// manager sees only their schools); read state is Staff.notificationsSeenAt.
+model StaffNotification {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  kind      String // see StaffNotificationKind in staff-notifications.service.ts
+  title     String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Days a school marked on its calendar link as holidays / not available.
+// The workshop rescheduler agent never moves a workshop onto one, and the
+// manager is alerted when one lands on a day that already has a workshop.
+// `day` is midnight of that day in the business timezone.
+model SchoolBlockedDate {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  day       DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, day])
 }

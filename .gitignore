@@ -10,3 +10,7 @@ build/
 /backend/generated/
 
 .claude/settings.local.json
+
+# Google service account keys
+*service-account*.json
+*-key.json

@@ -5,7 +5,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { CalendarIcon } from '../../components/icons';
 import { Modal } from '../../components/Modal';
 
-type DialogState = { type: 'cancel' | 'feedback'; workshopId: string };
+type DialogState = { type: 'cancel' | 'feedback' | 'reschedule'; workshopId: string };
 type EmailSentField = 'confirmationSentAt' | 'reminderSentAt' | 'feedbackFormSentAt';
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -16,6 +16,17 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   [WorkshopStatus.RESCHEDULED]: 'badge badge-warning',
 };
 
+const DIALOG_TEXT: Record<DialogState['type'], { title: string; confirm: string; field: string }> = {
+  cancel: { title: 'Cancel workshop', confirm: 'Cancel workshop', field: 'Cancellation reason' },
+  feedback: { title: 'Record feedback', confirm: 'Save feedback', field: 'Feedback summary' },
+  reschedule: { title: 'Reschedule workshop', confirm: 'Reschedule and email school', field: 'Reason (optional)' },
+};
+
+// Still going ahead: can be rescheduled, cancelled, reminded.
+function isLive(w: Workshop) {
+  return w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CONFIRMED || w.status === WorkshopStatus.RESCHEDULED;
+}
+
 export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [form, setForm] = useState({ topic: '', targetGrades: '', scheduledAt: '' });
@@ -23,6 +34,8 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
   const [warning, setWarning] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dialogText, setDialogText] = useState('');
+  const [dialogDate, setDialogDate] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
   function reload() {
     api.listWorkshops(schoolId).then(setWorkshops).catch((err) => setError(err.message));
@@ -63,16 +76,46 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
     });
   }
 
+  // The school's calendar: its workshop dates, and where it marks holidays.
+  async function sendCalendarLink() {
+    setNotice(null);
+    try {
+      const { sent } = await api.sendSchoolCalendarLink(schoolId);
+      setNotice(sent ? 'Calendar link emailed to the school.' : null);
+      if (!sent) setWarning("The calendar email wasn't sent. Check the Activity tab → Emails for the reason.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the calendar link');
+    }
+  }
+
+  async function copyCalendarLink() {
+    try {
+      const { url } = await api.getSchoolCalendarLink(schoolId);
+      await navigator.clipboard.writeText(url);
+      setNotice('Calendar link copied. Paste it anywhere, e.g. the school’s WhatsApp group.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not copy the calendar link');
+    }
+  }
+
   function openDialog(type: DialogState['type'], workshopId: string) {
     setDialog({ type, workshopId });
     setDialogText('');
+    setDialogDate('');
   }
 
   function confirmDialog() {
     if (!dialog) return;
     const text = dialogText.trim();
-    if (!text) return;
     const { type, workshopId } = dialog;
+    if (type === 'reschedule') {
+      if (!dialogDate) return;
+      setDialog(null);
+      const dto = { scheduledAt: new Date(dialogDate).toISOString(), reason: text || undefined };
+      runEmailStep(() => api.rescheduleWorkshop(schoolId, workshopId, dto), 'confirmationSentAt', 'reschedule');
+      return;
+    }
+    if (!text) return;
     setDialog(null);
     if (type === 'cancel') {
       run(() => api.cancelWorkshop(schoolId, workshopId, text));
@@ -85,6 +128,15 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
     <div>
       {error && <p className="error">{error}</p>}
       {warning && <p className="warning">{warning}</p>}
+      {notice && <p className="success small">{notice}</p>}
+      <div className="button-row">
+        <button className="secondary" onClick={sendCalendarLink}>
+          Email calendar link to school
+        </button>
+        <button className="secondary" onClick={copyCalendarLink}>
+          Copy calendar link
+        </button>
+      </div>
       <div className="workshop-list">
         {workshops.map((w) => (
           <div key={w.id} className="card">
@@ -106,13 +158,14 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
               {w.feedbackReceivedAt ? '✓ Feedback received' : 'No feedback yet'}
             </p>
             {w.cancelReason && <p className="error small">Cancelled: {w.cancelReason}</p>}
+            {isLive(w) && <SchoolAnswer w={w} />}
             <div className="button-row">
               {w.status === WorkshopStatus.SCHEDULED && (
                 <button onClick={() => runEmailStep(() => api.confirmWorkshop(schoolId, w.id), 'confirmationSentAt', 'confirmation')}>
                   Confirm
                 </button>
               )}
-              {w.status === WorkshopStatus.CONFIRMED && (
+              {isLive(w) && w.status !== WorkshopStatus.SCHEDULED && (
                 <>
                   {!w.confirmationSentAt && (
                     <button
@@ -138,10 +191,15 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
                   Resend Thank-you Email
                 </button>
               )}
-              {(w.status === WorkshopStatus.SCHEDULED || w.status === WorkshopStatus.CONFIRMED) && (
-                <button className="danger" onClick={() => openDialog('cancel', w.id)}>
-                  Cancel
-                </button>
+              {isLive(w) && (
+                <>
+                  <button className="secondary" onClick={() => openDialog('reschedule', w.id)}>
+                    Reschedule
+                  </button>
+                  <button className="danger" onClick={() => openDialog('cancel', w.id)}>
+                    Cancel
+                  </button>
+                </>
               )}
               {w.status === WorkshopStatus.COMPLETED && !w.feedbackReceivedAt && (
                 <button onClick={() => openDialog('feedback', w.id)}>Record Feedback</button>
@@ -178,18 +236,51 @@ export function SchoolWorkshopsTab({ schoolId }: { schoolId: string }) {
 
       {dialog && (
         <Modal
-          title={dialog.type === 'cancel' ? 'Cancel workshop' : 'Record feedback'}
-          confirmLabel={dialog.type === 'cancel' ? 'Cancel workshop' : 'Save feedback'}
+          title={DIALOG_TEXT[dialog.type].title}
+          confirmLabel={DIALOG_TEXT[dialog.type].confirm}
           onConfirm={confirmDialog}
           onCancel={() => setDialog(null)}
-          confirmDisabled={!dialogText.trim()}
+          confirmDisabled={dialog.type === 'reschedule' ? !dialogDate : !dialogText.trim()}
         >
+          {dialog.type === 'reschedule' && (
+            <label>
+              New date and time
+              <input type="datetime-local" value={dialogDate} onChange={(e) => setDialogDate(e.target.value)} autoFocus />
+            </label>
+          )}
           <label>
-            {dialog.type === 'cancel' ? 'Cancellation reason' : 'Feedback summary'}
-            <textarea rows={3} value={dialogText} onChange={(e) => setDialogText(e.target.value)} autoFocus />
+            {DIALOG_TEXT[dialog.type].field}
+            <textarea
+              rows={3}
+              value={dialogText}
+              onChange={(e) => setDialogText(e.target.value)}
+              autoFocus={dialog.type !== 'reschedule'}
+            />
           </label>
+          {dialog.type === 'reschedule' && <p className="small muted">The school is emailed the new date and time.</p>}
         </Modal>
       )}
     </div>
   );
+}
+
+// The school's answer from its workshop link. A change request with dates
+// still attached is being handled by the rescheduler agent; one without
+// dates means the agent handed it to the account manager.
+function SchoolAnswer({ w }: { w: Workshop }) {
+  const moved = w.autoRescheduleCount > 0 ? ` · Moved by the agent ${w.autoRescheduleCount}×` : '';
+  if (w.schoolConfirmedAt) {
+    return <p className="success small">✓ School confirmed this date{moved}</p>;
+  }
+  if (w.changeRequestedAt) {
+    const reason = w.changeReason ? `: "${w.changeReason}"` : '';
+    return w.preferredDates.length > 0 ? (
+      <p className="warning small">School asked to change the date{reason}. The agent is moving it.</p>
+    ) : (
+      <p className="error small">
+        School asked to change the date again{reason}. The agent has stopped after {w.autoRescheduleCount} moves: please call the school and Reschedule.
+      </p>
+    );
+  }
+  return <p className="small muted">Waiting for the school to confirm{moved}</p>;
 }

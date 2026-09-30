@@ -8,6 +8,7 @@ import { ActivityService } from '../activity/activity.service';
 import { SchoolAutomationService } from '../automation/school-automation.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 @Injectable()
 export class SchoolsService {
@@ -16,6 +17,7 @@ export class SchoolsService {
     private phaseTasks: PhaseTasksService,
     private activity: ActivityService,
     private automation: SchoolAutomationService,
+    private google: GoogleCalendarService,
   ) {}
 
   async create(dto: CreateSchoolDto, staff: StaffJwtPayload) {
@@ -84,6 +86,8 @@ export class SchoolsService {
     if (!school.ownerEmail && updated.ownerEmail) {
       await this.automation.onOwnerEmailAdded(id);
     }
+    // Its workshops move to the new manager's own Google Calendar.
+    if (reassigning) void this.google.syncSchool(id);
     return updated;
   }
 

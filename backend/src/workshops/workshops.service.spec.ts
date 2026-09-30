@@ -1,7 +1,9 @@
+import { ConfigService } from '@nestjs/config';
 import { WorkshopStatus } from '@b2b-ops/shared';
 import { WorkshopsService } from './workshops.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 const workshop = {
   id: 'w1',
@@ -27,8 +29,14 @@ function makeService(emailSent: boolean) {
     school: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 's1', name: 'DPS', ownerName: null, ownerEmail: 'o@dps.in' }) },
   };
   const notifications = { sendTemplateEmail: jest.fn().mockResolvedValue(emailSent) };
-  const service = new WorkshopsService(prisma as unknown as PrismaService, notifications as unknown as NotificationsService);
-  return { service, prisma };
+  const config = { get: () => 'https://ops.example', getOrThrow: () => 'secret' };
+  const service = new WorkshopsService(
+    prisma as unknown as PrismaService,
+    notifications as unknown as NotificationsService,
+    config as unknown as ConfigService,
+    { syncWorkshop: jest.fn() } as unknown as GoogleCalendarService,
+  );
+  return { service, prisma, notifications };
 }
 
 describe('WorkshopsService — "sent" timestamps only when the email went out', () => {
@@ -51,5 +59,26 @@ describe('WorkshopsService — "sent" timestamps only when the email went out', 
     const result = await service.remind('s1', 'w1');
     expect(result.reminderSentAt).toBeNull();
     expect(prisma.workshop.update).not.toHaveBeenCalled();
+  });
+
+  it('reschedule moves the date, emails the new date and clears the old reminder', async () => {
+    const { service, notifications } = makeService(true);
+    const result = await service.reschedule('s1', 'w1', { scheduledAt: '2026-10-12T04:30:00Z', reason: 'Exams' });
+    expect(result.status).toBe(WorkshopStatus.RESCHEDULED);
+    expect(result.scheduledAt).toEqual(new Date('2026-10-12T04:30:00Z'));
+    expect(result.reminderSentAt).toBeNull();
+    expect(result.confirmationSentAt).toBeInstanceOf(Date);
+    const email = notifications.sendTemplateEmail.mock.calls[0][0];
+    expect(email.templateKey).toBe('workshop_rescheduled');
+    expect(email.body).toContain('Reason: Exams');
+    expect(email.body).toMatch(/mark your holidays: https:\/\/ops\.example\/calendar\/s1\/[\w-]{32}$/);
+    expect(email.button.url).toMatch(/^https:\/\/ops\.example\/workshop\/w1\/[\w-]{32}$/);
+  });
+
+  it('reschedule leaves confirmationSentAt null when the email failed', async () => {
+    const { service } = makeService(false);
+    const result = await service.reschedule('s1', 'w1', { scheduledAt: '2026-10-12T04:30:00Z' });
+    expect(result.status).toBe(WorkshopStatus.RESCHEDULED);
+    expect(result.confirmationSentAt).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { api, School } from '../../lib/api';
 import { SchoolChecklistTab } from './SchoolChecklistTab';
 import { SchoolOnboardingTab } from './SchoolOnboardingTab';
@@ -21,7 +21,14 @@ type Tab = (typeof TABS)[number];
 export function SchoolDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [school, setSchool] = useState<School | null>(null);
-  const [tab, setTab] = useState<Tab>('Checklist');
+  // ?tab=Workshops opens that tab directly (links from the notification bell).
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState<Tab>(TABS.find((t) => t === tabParam) ?? 'Checklist');
+  useEffect(() => {
+    const t = TABS.find((x) => x === tabParam);
+    if (t) setTab(t);
+  }, [tabParam]);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);

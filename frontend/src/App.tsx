@@ -16,6 +16,11 @@ const SchoolDetailPage = lazy(() => import('./features/schools/SchoolDetailPage'
 const SchoolDetailsFormPage = lazy(() =>
   import('./features/teacher-form/SchoolDetailsFormPage').then((m) => ({ default: m.SchoolDetailsFormPage })),
 );
+const WorkshopResponsePage = lazy(() =>
+  import('./features/workshop-response/WorkshopResponsePage').then((m) => ({ default: m.WorkshopResponsePage })),
+);
+const CalendarPage = lazy(() => import('./features/calendar/CalendarPage').then((m) => ({ default: m.CalendarPage })));
+const SchoolCalendarPage = lazy(() => import('./features/calendar/SchoolCalendarPage').then((m) => ({ default: m.SchoolCalendarPage })));
 const StaffPage = lazy(() => import('./features/staff/StaffPage').then((m) => ({ default: m.StaffPage })));
 const AgentSuggestionsPage = lazy(() =>
   import('./features/agent-suggestions/AgentSuggestionsPage').then((m) => ({ default: m.AgentSuggestionsPage })),
@@ -34,12 +39,15 @@ export function App() {
         <Route path="/signup" element={<SignupPage />} />
         {/* Public — schools open it from the school details email, no login. */}
         <Route path="/teacher-form/:schoolId/:token" element={<SchoolDetailsFormPage />} />
+        <Route path="/workshop/:workshopId/:token" element={<WorkshopResponsePage />} />
+        <Route path="/calendar/:schoolId/:token" element={<SchoolCalendarPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<StaffLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schools" element={<SchoolsListPage />} />
             <Route path="/schools/new" element={<NewSchoolPage />} />
             <Route path="/schools/:id" element={<SchoolDetailPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/agent-suggestions" element={<AgentSuggestionsPage />} />
             <Route path="/staff" element={<StaffPage />} />
           </Route>

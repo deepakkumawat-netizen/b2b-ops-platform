@@ -29,7 +29,7 @@ export class WorkshopReminderAgentService {
 
     const dueWorkshops = await this.prisma.workshop.findMany({
       where: {
-        status: WorkshopStatus.CONFIRMED,
+        status: { in: [WorkshopStatus.CONFIRMED, WorkshopStatus.RESCHEDULED] },
         reminderSentAt: null,
         scheduledAt: { gte: tomorrowStart, lt: dayAfterStart },
       },

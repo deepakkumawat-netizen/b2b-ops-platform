@@ -48,3 +48,8 @@ export function formatInZone(date: Date, timeZone = APP_TIMEZONE): string {
 export function formatDateInZone(date: Date, timeZone = APP_TIMEZONE): string {
   return new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium' }).format(date);
 }
+
+/** "2026-10-05" for the business-timezone day, as a date <input> expects. */
+export function isoDateInZone(date: Date, timeZone = APP_TIMEZONE): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}

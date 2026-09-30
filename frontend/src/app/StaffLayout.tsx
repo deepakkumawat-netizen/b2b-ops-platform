@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { api, staffSession, useStaffUser } from '../lib/api';
-import { BuildingIcon, GridIcon, PlusIcon, SparkleIcon, UsersIcon } from '../components/icons';
+import { BuildingIcon, CalendarIcon, GridIcon, PlusIcon, SparkleIcon, UsersIcon } from '../components/icons';
+import { NotificationBell } from '../components/NotificationBell';
 
 function initials(name: string | undefined): string {
   if (!name) return '?';
@@ -30,6 +31,9 @@ export function StaffLayout() {
           <NavLink to="/schools" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
             <BuildingIcon /> Schools
           </NavLink>
+          <NavLink to="/calendar" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
+            <CalendarIcon /> Calendar
+          </NavLink>
           <NavLink to="/agent-suggestions" className={({ isActive }) => `app-nav-link${isActive ? ' active' : ''}`}>
             <SparkleIcon /> AI Suggestions
           </NavLink>
@@ -47,6 +51,7 @@ export function StaffLayout() {
       </aside>
       <div className="app-main">
         <header className="app-topbar">
+          <NotificationBell />
           <div className="app-topbar-user">
             <span className="app-topbar-role">{me?.role.replace('_', ' ')}</span>
             <span className="app-topbar-name">{me?.name}</span>

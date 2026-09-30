@@ -3,6 +3,7 @@ import { StaffRole } from '@b2b-ops/shared';
 import { StaffService } from './staff.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 const admin = { sub: 'admin-1', role: StaffRole.SUPER_ADMIN };
 
@@ -16,7 +17,12 @@ function makeService(target: Record<string, unknown>, activeAdmins = 2) {
     },
   };
   const notifications = { sendTemplateEmail: jest.fn().mockResolvedValue(undefined) };
-  const service = new StaffService(prisma as unknown as PrismaService, notifications as unknown as NotificationsService);
+  const google = { syncAccess: jest.fn().mockResolvedValue([]) };
+  const service = new StaffService(
+    prisma as unknown as PrismaService,
+    notifications as unknown as NotificationsService,
+    google as unknown as GoogleCalendarService,
+  );
   return { service, prisma, notifications };
 }
 

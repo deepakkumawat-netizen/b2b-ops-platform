@@ -143,6 +143,10 @@ export const AgentKey = {
   // School-facing: reminds a school about the parts of its school details
   // page still empty (teachers, students, logo, lab, orientation date).
   SCHOOL_DETAILS_REMINDER: 'SCHOOL_DETAILS_REMINDER',
+  // School-facing and fully autonomous: when a school asks (via its
+  // workshop link) to move a workshop, moves it to one of the school's
+  // preferred dates and emails the school and its manager.
+  WORKSHOP_RESCHEDULER: 'WORKSHOP_RESCHEDULER',
 } as const;
 export type AgentKey = (typeof AgentKey)[keyof typeof AgentKey];
 
@@ -157,6 +161,8 @@ export const SuggestionType = {
   COMPETITION_FOLLOWUP_NEEDED: 'COMPETITION_FOLLOWUP_NEEDED',
   MISSING_HANDOVER_DATA: 'MISSING_HANDOVER_DATA',
   SCHOOL_DETAILS_REMINDER_SENT: 'SCHOOL_DETAILS_REMINDER_SENT',
+  WORKSHOP_AUTO_RESCHEDULED: 'WORKSHOP_AUTO_RESCHEDULED',
+  WORKSHOP_RESCHEDULE_NEEDS_MANAGER: 'WORKSHOP_RESCHEDULE_NEEDS_MANAGER',
 } as const;
 export type SuggestionType = (typeof SuggestionType)[keyof typeof SuggestionType];
 
