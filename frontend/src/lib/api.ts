@@ -259,6 +259,8 @@ export type GoogleCalendarStatus = {
   openUrl: string | null;
   /** Google's one-time "Add calendar" prompt. */
   addUrl: string | null;
+  /** Google Calendar itself, shown inside the Calendar page. */
+  embedUrl: string | null;
   lastSyncedAt: string | null;
   lastError: string | null;
   /** 'own' for an account manager (only their schools), 'all' for everyone else. */
@@ -267,10 +269,6 @@ export type GoogleCalendarStatus = {
   googleAccount: string | null;
   /** Super Admin only: who can see what in Google Calendar. */
   access?: { name: string; email: string; role: string; access: 'all schools' | 'own schools' | 'none'; error: string | null }[];
-};
-export type StaffCalendar = {
-  workshops: (CalendarWorkshop & { schoolId: string; schoolName: string; changeRequested: boolean })[];
-  holidays: (CalendarHoliday & { schoolId: string; schoolName: string })[];
 };
 export type SchoolCalendar = {
   schoolName: string;
@@ -483,7 +481,6 @@ export const api = {
   // Public teacher-details form (no login — the school opens it from the emailed link).
   getGoogleCalendarStatus: () => request<GoogleCalendarStatus>('/google-calendar/status'),
   syncGoogleCalendar: () => request<GoogleCalendarStatus & { synced: number }>('/google-calendar/sync', { method: 'POST' }),
-  getStaffCalendar: (from: string, to: string) => request<StaffCalendar>(`/calendar?from=${from}&to=${to}`),
   getSchoolCalendarLink: (schoolId: string) => request<{ url: string }>(`/schools/${schoolId}/calendar-link`),
   sendSchoolCalendarLink: (schoolId: string) => request<{ sent: boolean }>(`/schools/${schoolId}/calendar-link/send`, { method: 'POST' }),
   getSchoolCalendar: (schoolId: string, token: string) => request<SchoolCalendar>(`/public/school-calendar/${schoolId}/${token}`),

@@ -205,5 +205,6 @@ describe('GoogleCalendarService.status — "Open my Google Calendar" link', () =
     const s = await serviceFor({ email: 'am@codevidhya.com', googleCalendarId: 'am-cal' }).status({ sub: 'm', role: StaffRole.ACCOUNT_MANAGER });
     expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?authuser=am%40codevidhya.com');
     expect(s.addUrl).toBe('https://calendar.google.com/calendar/r?cid=am-cal&authuser=am%40codevidhya.com');
+    expect(s.embedUrl).toBe('https://calendar.google.com/calendar/embed?src=am-cal&ctz=Asia%2FKolkata&mode=MONTH&showPrint=0&authuser=am%40codevidhya.com');
   });
 });

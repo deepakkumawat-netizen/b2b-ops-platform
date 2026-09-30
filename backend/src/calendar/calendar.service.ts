@@ -2,8 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { WorkshopStatus } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { StaffJwtPayload } from '../auth/jwt-payload.interface';
-import { schoolScopeWhere } from '../common/scope';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
 import { SchoolAutomationService } from '../automation/school-automation.service';
@@ -21,9 +19,8 @@ export function dayFromIso(iso: string): Date {
   return startOfDayInZone(new Date(`${iso}T12:00:00Z`));
 }
 
-// One calendar, two views: staff see every school they can access; a school
-// sees only its own workshops and marks its holidays. Every change the
-// workshop agents make shows up here because both read the Workshop rows.
+// The school's own calendar link: its workshops, and the holidays it marks.
+// (Staff see workshops in Google Calendar, see GoogleCalendarService.)
 @Injectable()
 export class CalendarService {
   constructor(
@@ -38,39 +35,6 @@ export class CalendarService {
 
   calendarLink(schoolId: string) {
     return schoolCalendarUrl(this.appUrl(), schoolId, this.secret());
-  }
-
-  /** Staff calendar: workshops (not cancelled) and school holidays between `from` and `to`. */
-  async forStaff(staff: StaffJwtPayload, fromIso: string, toIso: string) {
-    const from = dayFromIso(fromIso);
-    const to = new Date(dayFromIso(toIso).getTime() + DAY_MS);
-    const school = schoolScopeWhere(staff);
-    const [workshops, holidays] = await Promise.all([
-      this.prisma.workshop.findMany({
-        where: { school, status: { not: WorkshopStatus.CANCELLED }, scheduledAt: { gte: from, lt: to } },
-        include: { school: { select: { name: true } } },
-        orderBy: { scheduledAt: 'asc' },
-      }),
-      this.prisma.schoolBlockedDate.findMany({
-        where: { school, day: { gte: from, lt: to } },
-        include: { school: { select: { name: true } } },
-        orderBy: { day: 'asc' },
-      }),
-    ]);
-    return {
-      workshops: workshops.map((w) => ({
-        id: w.id,
-        schoolId: w.schoolId,
-        schoolName: w.school.name,
-        topic: w.topic,
-        targetGrades: w.targetGrades,
-        scheduledAt: w.scheduledAt,
-        status: w.status,
-        schoolConfirmed: !!w.schoolConfirmedAt,
-        changeRequested: !!w.changeRequestedAt,
-      })),
-      holidays: holidays.map((h) => ({ schoolId: h.schoolId, schoolName: h.school.name, date: isoDateInZone(h.day), note: h.note })),
-    };
   }
 
   /** The school's own calendar: all its workshops that aren't cancelled, and its holidays. */

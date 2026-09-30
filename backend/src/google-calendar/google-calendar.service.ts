@@ -26,6 +26,9 @@ export type AccessRow = { name: string; email: string; role: StaffRole; access: 
 const accountParam = (googleAccount?: string | null) => (googleAccount ? `authuser=${encodeURIComponent(googleAccount)}` : '');
 /** Just opens Google Calendar; the shared calendar shows once it has been added. */
 const openCalendarUrl = (googleAccount?: string | null) => `https://calendar.google.com/calendar/r?${accountParam(googleAccount)}`;
+/** The calendar itself, shown inside the tool's Calendar page. */
+const embedCalendarUrl = (calendarId: string, googleAccount?: string | null) =>
+  `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=${encodeURIComponent(APP_TIMEZONE)}&mode=MONTH&showPrint=0${googleAccount ? `&${accountParam(googleAccount)}` : ''}`;
 /** Google's "Add calendar" prompt, needed once per person (it asks again every time it's opened). */
 const addCalendarUrl = (calendarId: string, googleAccount?: string | null) =>
   `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarId)}${googleAccount ? `&${accountParam(googleAccount)}` : ''}`;
@@ -133,6 +136,7 @@ export class GoogleCalendarService {
       serviceAccountEmail: this.serviceAccount()?.client_email ?? null,
       openUrl: mine ? openCalendarUrl(googleAccount) : null,
       addUrl: mine ? addCalendarUrl(mine, googleAccount) : null,
+      embedUrl: mine ? embedCalendarUrl(mine, googleAccount) : null,
       googleAccount: googleAccount ?? null,
       myCalendar: viewer?.role === StaffRole.ACCOUNT_MANAGER ? 'own' : 'all',
       lastSyncedAt: this.lastSyncedAt,
