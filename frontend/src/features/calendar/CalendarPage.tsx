@@ -104,6 +104,11 @@ export function CalendarPage() {
                 ) : (
                   <span className="small muted">Your Google Calendar is being prepared.</span>
                 )}
+                {google.addUrl && (
+                  <a className="small" href={google.addUrl} target="_blank" rel="noopener noreferrer">
+                    First time? Add it to Google Calendar
+                  </a>
+                )}
                 {google.openUrl && google.googleAccount && <span className="small muted">Opens as {google.googleAccount}</span>}
                 <button className="secondary" onClick={syncNow} disabled={syncing}>
                   {syncing ? 'Syncing…' : 'Sync now'}

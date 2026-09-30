@@ -257,6 +257,8 @@ export type GoogleCalendarStatus = {
   calendarId: string | null;
   serviceAccountEmail: string | null;
   openUrl: string | null;
+  /** Google's one-time "Add calendar" prompt. */
+  addUrl: string | null;
   lastSyncedAt: string | null;
   lastError: string | null;
   /** 'own' for an account manager (only their schools), 'all' for everyone else. */

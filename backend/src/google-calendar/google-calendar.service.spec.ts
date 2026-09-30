@@ -197,11 +197,13 @@ describe('GoogleCalendarService.status — "Open my Google Calendar" link', () =
 
   it('opens the main calendar as the owner account for a Super Admin', async () => {
     const s = await serviceFor({ email: 'admin@b2bops.dev', googleCalendarId: null }).status({ sub: 'a', role: StaffRole.SUPER_ADMIN });
-    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?cid=main%40group.calendar.google.com&authuser=owner%40gmail.com');
+    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?authuser=owner%40gmail.com');
+    expect(s.addUrl).toBe('https://calendar.google.com/calendar/r?cid=main%40group.calendar.google.com&authuser=owner%40gmail.com');
   });
 
   it("opens an account manager's own calendar as themselves", async () => {
     const s = await serviceFor({ email: 'am@codevidhya.com', googleCalendarId: 'am-cal' }).status({ sub: 'm', role: StaffRole.ACCOUNT_MANAGER });
-    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?cid=am-cal&authuser=am%40codevidhya.com');
+    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?authuser=am%40codevidhya.com');
+    expect(s.addUrl).toBe('https://calendar.google.com/calendar/r?cid=am-cal&authuser=am%40codevidhya.com');
   });
 });

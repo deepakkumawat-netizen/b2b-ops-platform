@@ -22,9 +22,13 @@ type ServiceAccount = { client_email: string; private_key: string };
 /** One row per staff member for the admin's "who can see it" list. */
 export type AccessRow = { name: string; email: string; role: StaffRole; access: 'all schools' | 'own schools' | 'none'; error: string | null };
 
-/** Opens the calendar in the given Google account (authuser), not just whichever account the browser signed in to first. */
-const calendarUrl = (calendarId: string, googleAccount?: string | null) =>
-  `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarId)}${googleAccount ? `&authuser=${encodeURIComponent(googleAccount)}` : ''}`;
+// Both open in the given Google account (authuser), not just whichever account the browser signed in to first.
+const accountParam = (googleAccount?: string | null) => (googleAccount ? `authuser=${encodeURIComponent(googleAccount)}` : '');
+/** Just opens Google Calendar; the shared calendar shows once it has been added. */
+const openCalendarUrl = (googleAccount?: string | null) => `https://calendar.google.com/calendar/r?${accountParam(googleAccount)}`;
+/** Google's "Add calendar" prompt, needed once per person (it asks again every time it's opened). */
+const addCalendarUrl = (calendarId: string, googleAccount?: string | null) =>
+  `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarId)}${googleAccount ? `&${accountParam(googleAccount)}` : ''}`;
 
 /** Google event ids allow only 0-9 and a-v; a hash of our own id is stable, so an event never needs its id stored. */
 export function googleEventId(kind: 'workshop' | 'holiday', key: string): string {
@@ -127,7 +131,8 @@ export class GoogleCalendarService {
       configured: this.isConfigured(),
       calendarId: main ?? null,
       serviceAccountEmail: this.serviceAccount()?.client_email ?? null,
-      openUrl: mine ? calendarUrl(mine, googleAccount) : null,
+      openUrl: mine ? openCalendarUrl(googleAccount) : null,
+      addUrl: mine ? addCalendarUrl(mine, googleAccount) : null,
       googleAccount: googleAccount ?? null,
       myCalendar: viewer?.role === StaffRole.ACCOUNT_MANAGER ? 'own' : 'all',
       lastSyncedAt: this.lastSyncedAt,
