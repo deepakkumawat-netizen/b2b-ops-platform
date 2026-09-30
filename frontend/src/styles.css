@@ -2402,41 +2402,6 @@ button.cal-chip {
   margin-left: 8px;
   white-space: nowrap;
 }
-.gcal-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-.gcal-card.ok {
-  border-color: #a7f3d0;
-  background: #ecfdf5;
-}
-.gcal-card .button-row {
-  margin: 0;
-}
-.gcal-access {
-  flex-basis: 100%;
-}
-.gcal-access summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-.gcal-access table {
-  margin-top: 8px;
-  width: 100%;
-  border-collapse: collapse;
-}
-.gcal-access td {
-  padding: 4px 8px 4px 0;
-  border-top: 1px solid var(--border);
-}
 
 /* Google Calendar shown inside the Calendar page */
 .gcal-embed {

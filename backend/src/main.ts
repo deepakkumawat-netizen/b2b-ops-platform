@@ -11,7 +11,14 @@ async function bootstrap() {
   // req.ip is the proxy's address, so ThrottlerGuard's per-IP limits become
   // one shared limit for the whole team, and req.secure is always false.
   app.set('trust proxy', 1);
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        // Helmet's defaults, plus Google Calendar in a frame: the Calendar page shows it.
+        directives: { frameSrc: ["'self'", 'https://calendar.google.com'] },
+      },
+    }),
+  );
   // Logo uploads come as base64 JSON (images up to 5 MB), so only their two
   // routes get a big body limit; registered first, it handles those requests
   // and the general parser below skips them. Everything else stays at 3 MB

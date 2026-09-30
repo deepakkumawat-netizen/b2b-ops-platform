@@ -480,7 +480,6 @@ export const api = {
 
   // Public teacher-details form (no login — the school opens it from the emailed link).
   getGoogleCalendarStatus: () => request<GoogleCalendarStatus>('/google-calendar/status'),
-  syncGoogleCalendar: () => request<GoogleCalendarStatus & { synced: number }>('/google-calendar/sync', { method: 'POST' }),
   getSchoolCalendarLink: (schoolId: string) => request<{ url: string }>(`/schools/${schoolId}/calendar-link`),
   sendSchoolCalendarLink: (schoolId: string) => request<{ sent: boolean }>(`/schools/${schoolId}/calendar-link/send`, { method: 'POST' }),
   getSchoolCalendar: (schoolId: string, token: string) => request<SchoolCalendar>(`/public/school-calendar/${schoolId}/${token}`),
