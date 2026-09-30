@@ -100,3 +100,7 @@ services:
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false
+      # The Google account that owns the calendar; Super Admins' "Open my
+      # Google Calendar" button opens it as this account.
+      - key: GOOGLE_CALENDAR_OWNER_EMAIL
+        value: kumawatk2020@gmail.com

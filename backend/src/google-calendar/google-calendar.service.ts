@@ -22,7 +22,9 @@ type ServiceAccount = { client_email: string; private_key: string };
 /** One row per staff member for the admin's "who can see it" list. */
 export type AccessRow = { name: string; email: string; role: StaffRole; access: 'all schools' | 'own schools' | 'none'; error: string | null };
 
-const calendarUrl = (calendarId: string) => `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(calendarId)}`;
+/** Opens the calendar in the given Google account (authuser), not just whichever account the browser signed in to first. */
+const calendarUrl = (calendarId: string, googleAccount?: string | null) =>
+  `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarId)}${googleAccount ? `&authuser=${encodeURIComponent(googleAccount)}` : ''}`;
 
 /** Google event ids allow only 0-9 and a-v; a hash of our own id is stable, so an event never needs its id stored. */
 export function googleEventId(kind: 'workshop' | 'holiday', key: string): string {
@@ -115,16 +117,18 @@ export class GoogleCalendarService {
   /** What the Calendar page shows `viewer`: their own Google calendar link, plus (for admins) who has access. */
   async status(viewer?: StaffJwtPayload) {
     const main = this.calendarId();
-    let mine: string | null = main ?? null;
-    if (viewer?.role === StaffRole.ACCOUNT_MANAGER) {
-      const me = await this.prisma.staff.findUnique({ where: { id: viewer.sub }, select: { googleCalendarId: true } });
-      mine = me?.googleCalendarId ?? null;
-    }
+    const me = viewer ? await this.prisma.staff.findUnique({ where: { id: viewer.sub }, select: { email: true, googleCalendarId: true } }) : null;
+    const mine = viewer?.role === StaffRole.ACCOUNT_MANAGER ? (me?.googleCalendarId ?? null) : (main ?? null);
+    // Super Admins open it as the calendar's owner account when one is set
+    // (the demo admin login isn't a Google account); everyone else as themselves.
+    const owner = this.config.get<string>('GOOGLE_CALENDAR_OWNER_EMAIL')?.trim();
+    const googleAccount = viewer?.role === StaffRole.SUPER_ADMIN && owner ? owner : me?.email;
     return {
       configured: this.isConfigured(),
       calendarId: main ?? null,
       serviceAccountEmail: this.serviceAccount()?.client_email ?? null,
-      openUrl: mine ? calendarUrl(mine) : null,
+      openUrl: mine ? calendarUrl(mine, googleAccount) : null,
+      googleAccount: googleAccount ?? null,
       myCalendar: viewer?.role === StaffRole.ACCOUNT_MANAGER ? 'own' : 'all',
       lastSyncedAt: this.lastSyncedAt,
       lastError: this.lastError,

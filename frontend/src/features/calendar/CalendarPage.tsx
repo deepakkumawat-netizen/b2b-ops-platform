@@ -104,6 +104,7 @@ export function CalendarPage() {
                 ) : (
                   <span className="small muted">Your Google Calendar is being prepared.</span>
                 )}
+                {google.openUrl && google.googleAccount && <span className="small muted">Opens as {google.googleAccount}</span>}
                 <button className="secondary" onClick={syncNow} disabled={syncing}>
                   {syncing ? 'Syncing…' : 'Sync now'}
                 </button>

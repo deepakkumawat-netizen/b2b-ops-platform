@@ -1,6 +1,6 @@
 import { generateKeyPairSync } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { WorkshopStatus } from '@b2b-ops/shared';
+import { StaffRole, WorkshopStatus } from '@b2b-ops/shared';
 import { GoogleCalendarService, googleEventId, workshopEvent } from './google-calendar.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -180,5 +180,28 @@ describe('GoogleCalendarService — quick changes to the same event', () => {
 
     // Create (PUT → 404, then POST) fully finishes before the delete, so the event ends up removed.
     expect(order).toEqual(['PUT', 'POST', 'DELETE']);
+  });
+});
+
+describe('GoogleCalendarService.status — "Open my Google Calendar" link', () => {
+  const env: Record<string, string> = {
+    GOOGLE_CALENDAR_ID: 'main@group.calendar.google.com',
+    GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'bot@p.iam.gserviceaccount.com', private_key: privateKey }),
+    GOOGLE_CALENDAR_OWNER_EMAIL: 'owner@gmail.com',
+  };
+  const serviceFor = (me: { email: string; googleCalendarId: string | null }) =>
+    new GoogleCalendarService(
+      { staff: { findUnique: jest.fn().mockResolvedValue(me), findMany: jest.fn().mockResolvedValue([]) } } as unknown as PrismaService,
+      { get: (k: string) => env[k] } as unknown as ConfigService,
+    );
+
+  it('opens the main calendar as the owner account for a Super Admin', async () => {
+    const s = await serviceFor({ email: 'admin@b2bops.dev', googleCalendarId: null }).status({ sub: 'a', role: StaffRole.SUPER_ADMIN });
+    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?cid=main%40group.calendar.google.com&authuser=owner%40gmail.com');
+  });
+
+  it("opens an account manager's own calendar as themselves", async () => {
+    const s = await serviceFor({ email: 'am@codevidhya.com', googleCalendarId: 'am-cal' }).status({ sub: 'm', role: StaffRole.ACCOUNT_MANAGER });
+    expect(s.openUrl).toBe('https://calendar.google.com/calendar/r?cid=am-cal&authuser=am%40codevidhya.com');
   });
 });

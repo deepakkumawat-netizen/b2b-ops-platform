@@ -261,6 +261,8 @@ export type GoogleCalendarStatus = {
   lastError: string | null;
   /** 'own' for an account manager (only their schools), 'all' for everyone else. */
   myCalendar: 'own' | 'all';
+  /** The Google account the "Open my Google Calendar" link opens as. */
+  googleAccount: string | null;
   /** Super Admin only: who can see what in Google Calendar. */
   access?: { name: string; email: string; role: string; access: 'all schools' | 'own schools' | 'none'; error: string | null }[];
 };
