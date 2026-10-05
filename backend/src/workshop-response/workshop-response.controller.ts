@@ -8,7 +8,6 @@ import { isValidWorkshopResponseToken } from '../workshops/workshop-response-tok
 import { MIN_LEAD_DAYS, WorkshopReschedulerAgentService } from '../ai/agents/workshop-rescheduler-agent.service';
 import { formatDateInZone, isoDateInZone, startOfDayInZone } from '../common/time';
 import { RequestWorkshopChangeDto } from './dto/request-workshop-change.dto';
-import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 // PUBLIC (no StaffAuthGuard): the "confirm or change this date" page a
 // school opens from its workshop emails. The signed token in the URL is the
@@ -22,7 +21,6 @@ export class WorkshopResponseController {
     private config: ConfigService,
     private activity: ActivityService,
     private rescheduler: WorkshopReschedulerAgentService,
-    private google: GoogleCalendarService,
   ) {}
 
   @Get()
@@ -43,7 +41,6 @@ export class WorkshopResponseController {
       });
       await this.activity.record(workshop.schoolId, null, `School confirmed the workshop "${workshop.topic}"`);
       await this.rescheduler.notifySchoolConfirmed(workshop.id);
-      void this.google.syncWorkshop(workshop.id); // turns the event green
       return this.view(updated);
     }
     return this.view(workshop);
@@ -78,7 +75,6 @@ export class WorkshopResponseController {
     } catch {
       // Left pending for the daily run.
     }
-    void this.google.syncWorkshop(workshop.id); // moved, or marked as waiting for new dates
     const updated = await this.findWorkshop(workshopId, token);
     return { ...this.view(updated), outcome };
   }

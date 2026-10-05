@@ -5,11 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CalendarService } from './calendar.service';
 import { isValidSchoolCalendarToken } from './school-calendar-token';
 import { AddHolidayDto } from './dto/holiday.dto';
+import { RequestWorkshopDto } from './dto/workshop-request.dto';
 
 // PUBLIC (no StaffAuthGuard): the school's calendar page from its emails.
 // The signed token in the URL is the only credential, so a bad one gets a
 // plain 404. The school sees only its own workshops and holidays, and can
-// only add or remove its own holidays.
+// only add or remove its own holidays and request workshops for itself.
 @Controller('public/school-calendar/:schoolId/:token')
 export class SchoolCalendarController {
   constructor(
@@ -32,6 +33,13 @@ export class SchoolCalendarController {
       throw new NotFoundException();
     });
     return this.calendar.addHoliday(schoolId, dto.date, dto.note?.trim() || null);
+  }
+
+  @Post('workshops')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async requestWorkshop(@Param('schoolId') schoolId: string, @Param('token') token: string, @Body() dto: RequestWorkshopDto) {
+    this.check(schoolId, token);
+    return this.calendar.requestWorkshop(schoolId, dto);
   }
 
   @Delete('holidays/:date')

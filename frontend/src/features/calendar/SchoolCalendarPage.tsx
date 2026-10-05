@@ -12,7 +12,8 @@ const longDay = (iso: string) =>
 // Public page (no login): the school's calendar from its emails. It shows
 // the school's workshops and lets it mark holidays / busy days. The
 // rescheduler agent never moves a workshop onto a marked day, and marking
-// a day that already has a workshop alerts the account manager.
+// a day that already has a workshop alerts the account manager. It can
+// also request a workshop, which emails the admins, manager and sales rep.
 export function SchoolCalendarPage() {
   const { schoolId = '', token = '' } = useParams();
   const [data, setData] = useState<SchoolCalendar | null>(null);
@@ -22,6 +23,8 @@ export function SchoolCalendarPage() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [request, setRequest] = useState<{ topic: string; grades: string; date: string; time: string; note: string } | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   function reload() {
     return api
@@ -86,6 +89,39 @@ export function SchoolCalendarPage() {
     }
   }
 
+  function openRequest(date = '') {
+    setDay(null);
+    setMessage(null);
+    setRequestError(null);
+    setRequest({ topic: '', grades: '', date, time: '11:00', note: '' });
+  }
+
+  async function sendRequest() {
+    if (!request) return;
+    if (!request.topic.trim() || !request.date || !request.time) {
+      setRequestError('Please fill in the topic, date and time.');
+      return;
+    }
+    setBusy(true);
+    setRequestError(null);
+    try {
+      await api.requestSchoolWorkshop(schoolId, token, {
+        topic: request.topic.trim(),
+        targetGrades: request.grades.trim() || undefined,
+        date: request.date,
+        time: request.time,
+        note: request.note.trim() || undefined,
+      });
+      await reload();
+      setMessage({ ok: true, text: `Thank you! We've received your workshop request for ${longDay(request.date)}. Our team will confirm it shortly.` });
+      setRequest(null);
+    } catch (err) {
+      setRequestError(err instanceof Error ? err.message : 'Could not send. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function removeHoliday() {
     if (!day) return;
     setBusy(true);
@@ -108,9 +144,10 @@ export function SchoolCalendarPage() {
         <p className="auth-subtitle">{data.schoolName} · codevidhya</p>
         <p className="muted small">
           Your workshops are shown in blue. Tap any day to mark it as a holiday, exam day or any day that doesn't suit you, and we'll never
-          schedule a workshop on it.
+          schedule a workshop on it. Want a workshop on a particular day? Use "Request a workshop".
         </p>
         {message && <div className={message.ok ? 'public-form-success' : 'warning'}>{message.text}</div>}
+        <button onClick={() => openRequest()}>+ Request a workshop</button>
 
         <MonthCalendar
           month={month}
@@ -179,11 +216,53 @@ export function SchoolCalendarPage() {
             What's happening? (optional)
             <input placeholder="e.g. Diwali holiday, Exams" value={note} onChange={(e) => setNote(e.target.value)} autoFocus />
           </label>
-          {selectedHoliday && (
+          {selectedHoliday ? (
             <button className="secondary" onClick={removeHoliday} disabled={busy}>
               Remove this holiday
             </button>
+          ) : (
+            <button className="secondary" onClick={() => openRequest(day)} disabled={busy}>
+              Request a workshop on this day instead
+            </button>
           )}
+        </Modal>
+      )}
+
+      {request && (
+        <Modal
+          title="Request a workshop"
+          confirmLabel={busy ? 'Sending…' : 'Send request'}
+          onConfirm={sendRequest}
+          onCancel={() => setRequest(null)}
+          confirmDisabled={busy}
+        >
+          <p className="muted small">Pick a day and time that suits you. We'll confirm it by email.</p>
+          <label>
+            Topic
+            <input
+              placeholder="e.g. AI & Robotics workshop"
+              value={request.topic}
+              onChange={(e) => setRequest({ ...request, topic: e.target.value })}
+              autoFocus
+            />
+          </label>
+          <label>
+            Grades (optional)
+            <input placeholder="e.g. 6-8" value={request.grades} onChange={(e) => setRequest({ ...request, grades: e.target.value })} />
+          </label>
+          <label>
+            Date
+            <input type="date" min={data.today} value={request.date} onChange={(e) => setRequest({ ...request, date: e.target.value })} />
+          </label>
+          <label>
+            Time
+            <input type="time" value={request.time} onChange={(e) => setRequest({ ...request, time: e.target.value })} />
+          </label>
+          <label>
+            Anything we should know? (optional)
+            <textarea rows={3} value={request.note} onChange={(e) => setRequest({ ...request, note: e.target.value })} />
+          </label>
+          {requestError && <p className="error">{requestError}</p>}
         </Modal>
       )}
     </div>

@@ -21,7 +21,7 @@ const CTOR_ORDER = [
   'schoolDetailsReminder',
   'workshopRescheduler',
   'workshopScheduler',
-  'googleCalendar',
+  'festivalHolidays',
   'checklist',
 ] as const;
 

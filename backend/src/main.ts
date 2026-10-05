@@ -12,12 +12,7 @@ async function bootstrap() {
   // one shared limit for the whole team, and req.secure is always false.
   app.set('trust proxy', 1);
   app.use(
-    helmet({
-      contentSecurityPolicy: {
-        // Helmet's defaults, plus Google Calendar in a frame: the Calendar page shows it.
-        directives: { frameSrc: ["'self'", 'https://calendar.google.com'] },
-      },
-    }),
+    helmet(),
   );
   // Logo uploads come as base64 JSON (images up to 5 MB), so only their two
   // routes get a big body limit; registered first, it handles those requests

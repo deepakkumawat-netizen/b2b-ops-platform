@@ -12,13 +12,15 @@ import { DataCompletenessAgentService } from './agents/data-completeness-agent.s
 import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
 import { WorkshopReschedulerAgentService } from './agents/workshop-rescheduler-agent.service';
 import { WorkshopSchedulerAgentService } from './agents/workshop-scheduler-agent.service';
-import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
+import { FestivalHolidaysAgentService } from './agents/festival-holidays-agent.service';
 import { SchoolAutomationService } from '../automation/school-automation.service';
 import { APP_TIMEZONE } from '../common/time';
 
 export const AGENT_NAMES = [
   // First, so later agents (e.g. stalePhase) see the phases it advanced.
   'checklist',
+  // Before the workshop agents, so they never pick a festival day.
+  'festivalHolidays',
   // Right after, so a school the checklist agent just moved into ongoing
   // engagement gets its workshops the same morning.
   'workshopScheduler',
@@ -33,8 +35,6 @@ export const AGENT_NAMES = [
   'dataCompleteness',
   'schoolDetailsReminder',
   'workshopRescheduler',
-  // Last, so Google Calendar gets every change the agents above made.
-  'googleCalendar',
 ] as const;
 export type AgentName = (typeof AGENT_NAMES)[number];
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
@@ -70,7 +70,7 @@ export class AgentRunnerService {
     private schoolDetailsReminderAgent: SchoolDetailsReminderAgentService,
     private workshopReschedulerAgent: WorkshopReschedulerAgentService,
     private workshopSchedulerAgent: WorkshopSchedulerAgentService,
-    private googleCalendar: GoogleCalendarService,
+    private festivalHolidaysAgent: FestivalHolidaysAgentService,
     private checklistAgent: SchoolAutomationService,
   ) {}
 
@@ -99,7 +99,7 @@ export class AgentRunnerService {
       schoolDetailsReminder: this.schoolDetailsReminderAgent,
       workshopRescheduler: this.workshopReschedulerAgent,
       workshopScheduler: this.workshopSchedulerAgent,
-      googleCalendar: this.googleCalendar,
+      festivalHolidays: this.festivalHolidaysAgent,
     };
 
     const counts = {} as Record<AgentName, number>;

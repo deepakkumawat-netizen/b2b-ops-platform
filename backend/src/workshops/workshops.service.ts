@@ -11,7 +11,6 @@ import { RecordFeedbackDto } from './dto/record-feedback.dto';
 import { formatInZone } from '../common/time';
 import { workshopResponseUrl } from './workshop-response-token';
 import { schoolCalendarUrl } from '../calendar/school-calendar-token';
-import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 /** Still going ahead — the school can confirm it or ask to move it. */
 export const LIVE_WORKSHOP_STATUSES: WorkshopStatus[] = [WorkshopStatus.SCHEDULED, WorkshopStatus.CONFIRMED, WorkshopStatus.RESCHEDULED];
@@ -26,14 +25,7 @@ export class WorkshopsService {
     private prisma: PrismaService,
     private notifications: NotificationsService,
     private config: ConfigService,
-    private google: GoogleCalendarService,
   ) {}
-
-  /** Mirrors the workshop into the shared Google Calendar without making the caller wait (best-effort). */
-  private synced<T extends { id: string }>(workshop: T): T {
-    void this.google.syncWorkshop(workshop.id);
-    return workshop;
-  }
 
   /** The school's calendar page: all its workshop dates, plus the holidays it marks. */
   calendarLink(schoolId: string) {
@@ -61,7 +53,7 @@ export class WorkshopsService {
     const workshop = await this.prisma.workshop.create({
       data: { schoolId, topic: dto.topic, targetGrades: dto.targetGrades, scheduledAt: new Date(dto.scheduledAt) },
     });
-    return this.synced(workshop);
+    return workshop;
   }
 
   async update(schoolId: string, workshopId: string, dto: UpdateWorkshopDto) {
@@ -70,7 +62,7 @@ export class WorkshopsService {
       where: { id: workshop.id },
       data: { ...dto, scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined },
     });
-    return this.synced(updated);
+    return updated;
   }
 
   async confirm(schoolId: string, workshopId: string) {
@@ -88,7 +80,7 @@ export class WorkshopsService {
         `Dear ${school.ownerName ?? 'Team'},\n\nThis confirms the workshop "${workshop.topic}" scheduled for ${formatInZone(updated.scheduledAt)}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.\n\nPlease use the button below to confirm this date, or to ask for a different one if it doesn't suit you.\n\nTeam codevidhya`,
       true,
     );
-    return this.synced(await this.markSent(updated, sent, 'confirmationSentAt'));
+    return await this.markSent(updated, sent, 'confirmationSentAt');
   }
 
   async remind(schoolId: string, workshopId: string) {
@@ -114,7 +106,7 @@ export class WorkshopsService {
       (school) =>
         `Dear ${school.ownerName ?? 'Team'},\n\nThank you for hosting "${workshop.topic}"! We'd love your feedback — please share it via the feedback form shared alongside this email.\n\nTeam codevidhya`,
     );
-    return this.synced(await this.markSent(updated, sent, 'feedbackFormSentAt'));
+    return await this.markSent(updated, sent, 'feedbackFormSentAt');
   }
 
   async nagFeedback(schoolId: string, workshopId: string) {
@@ -157,7 +149,7 @@ export class WorkshopsService {
         `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${formatInZone(workshop.scheduledAt)} has been moved to ${formatInZone(updated.scheduledAt)}${workshop.targetGrades ? ` for grades ${workshop.targetGrades}` : ''}.${dto.reason ? `\n\nReason: ${dto.reason}` : ''}\n\nPlease use the button below to confirm the new date, or to ask for a different one.\n\nTeam codevidhya`,
       true,
     );
-    return this.synced(await this.markSent(updated, sent, 'confirmationSentAt'));
+    return await this.markSent(updated, sent, 'confirmationSentAt');
   }
 
   async cancel(schoolId: string, workshopId: string, dto: CancelWorkshopDto) {
@@ -169,7 +161,7 @@ export class WorkshopsService {
     await this.notifyForWorkshop(workshop.schoolId, updated, 'workshop_cancellation', 'Workshop Cancelled', (school) =>
       `Dear ${school.ownerName ?? 'Team'},\n\nThe workshop "${workshop.topic}" originally scheduled for ${formatInZone(updated.scheduledAt)} has been cancelled: ${dto.cancelReason}.\n\nTeam codevidhya`,
     );
-    return this.synced(updated);
+    return updated;
   }
 
   async recordFeedback(schoolId: string, workshopId: string, dto: RecordFeedbackDto) {

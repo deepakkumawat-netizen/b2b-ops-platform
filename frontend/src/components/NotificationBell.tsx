@@ -13,6 +13,8 @@ const KIND_ICON: Record<StaffNotification['kind'], string> = {
   SCHOOL_HOLIDAY_ADDED: '🏖️',
   SCHOOL_HOLIDAY_CLASH: '⚠️',
   WORKSHOPS_AUTO_SCHEDULED: '🗓️',
+  WORKSHOP_REQUESTED: '🙋',
+  FESTIVAL_CLASH: '🪔',
 };
 
 function ago(iso: string): string {

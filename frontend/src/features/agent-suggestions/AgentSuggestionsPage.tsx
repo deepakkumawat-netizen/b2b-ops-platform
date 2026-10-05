@@ -129,9 +129,9 @@ export function AgentSuggestionsPage() {
           `Drafted ${result.engagement} engagement + ${result.renewal} renewal suggestion(s) for review. ` +
           `Auto-sent ${result.workshopReminder} workshop reminder(s), ${result.workshopFeedbackNag} feedback nag(s), ` +
           `${result.schoolDetailsReminder} school details reminder(s), ` +
+          `marked ${result.festivalHolidays} festival holiday(s) on school calendars, ` +
           `scheduled ${result.workshopScheduler} committed workshop(s), ` +
           `handled ${result.workshopRescheduler} workshop date change request(s), ` +
-          `synced ${result.googleCalendar} workshop(s) and holiday(s) to Google Calendar, ` +
           `and opened ${result.renewalCycleOpener} renewal cycle(s) automatically. ` +
           `Logged ${alerts} internal alert(s) (stale phase, stalled renewal, competition follow-up, missing data).`,
       );

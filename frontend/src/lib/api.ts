@@ -239,7 +239,9 @@ export type StaffNotification = {
     | 'WORKSHOP_NEEDS_MANAGER'
     | 'SCHOOL_HOLIDAY_ADDED'
     | 'SCHOOL_HOLIDAY_CLASH'
-    | 'WORKSHOPS_AUTO_SCHEDULED';
+    | 'WORKSHOPS_AUTO_SCHEDULED'
+    | 'WORKSHOP_REQUESTED'
+    | 'FESTIVAL_CLASH';
   title: string;
   detail: string | null;
   createdAt: string;
@@ -253,23 +255,9 @@ export type CalendarWorkshop = {
   schoolConfirmed: boolean;
 };
 export type CalendarHoliday = { date: string; note: string | null };
-export type GoogleCalendarStatus = {
-  configured: boolean;
-  calendarId: string | null;
-  serviceAccountEmail: string | null;
-  openUrl: string | null;
-  /** Google's one-time "Add calendar" prompt. */
-  addUrl: string | null;
-  /** Google Calendar itself, shown inside the Calendar page. */
-  embedUrl: string | null;
-  lastSyncedAt: string | null;
-  lastError: string | null;
-  /** 'own' for an account manager (only their schools), 'all' for everyone else. */
-  myCalendar: 'own' | 'all';
-  /** The Google account the "Open my Google Calendar" link opens as. */
-  googleAccount: string | null;
-  /** Super Admin only: who can see what in Google Calendar. */
-  access?: { name: string; email: string; role: string; access: 'all schools' | 'own schools' | 'none'; error: string | null }[];
+export type StaffCalendar = {
+  workshops: (CalendarWorkshop & { schoolId: string; schoolName: string; changeRequested: boolean })[];
+  holidays: (CalendarHoliday & { schoolId: string; schoolName: string })[];
 };
 export type SchoolCalendar = {
   schoolName: string;
@@ -406,7 +394,7 @@ export type AgentName =
   | 'schoolDetailsReminder'
   | 'workshopRescheduler'
   | 'workshopScheduler'
-  | 'googleCalendar';
+  | 'festivalHolidays';
 export type AgentRunResult = Record<AgentName, number> & { errors: Partial<Record<AgentName, string>> };
 
 export const api = {
@@ -481,7 +469,7 @@ export const api = {
     request<{ sent: boolean }>(`/schools/${schoolId}/teachers/request-details`, { method: 'POST' }),
 
   // Public teacher-details form (no login — the school opens it from the emailed link).
-  getGoogleCalendarStatus: () => request<GoogleCalendarStatus>('/google-calendar/status'),
+  getStaffCalendar: (from: string, to: string) => request<StaffCalendar>(`/calendar?from=${from}&to=${to}`),
   getSchoolCalendarLink: (schoolId: string) => request<{ url: string }>(`/schools/${schoolId}/calendar-link`),
   sendSchoolCalendarLink: (schoolId: string) => request<{ sent: boolean }>(`/schools/${schoolId}/calendar-link/send`, { method: 'POST' }),
   getSchoolCalendar: (schoolId: string, token: string) => request<SchoolCalendar>(`/public/school-calendar/${schoolId}/${token}`),
@@ -489,6 +477,15 @@ export const api = {
     request<{ clashes: { id: string; topic: string; scheduledAt: string }[] }>(`/public/school-calendar/${schoolId}/${token}/holidays`, {
       method: 'POST',
       body: JSON.stringify({ date, note }),
+    }),
+  requestSchoolWorkshop: (
+    schoolId: string,
+    token: string,
+    body: { topic: string; targetGrades?: string; date: string; time: string; note?: string },
+  ) =>
+    request<{ id: string; topic: string; scheduledAt: string }>(`/public/school-calendar/${schoolId}/${token}/workshops`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
   removeSchoolHoliday: (schoolId: string, token: string, date: string) =>
     request<{ removed: number }>(`/public/school-calendar/${schoolId}/${token}/holidays/${date}`, { method: 'DELETE' }),

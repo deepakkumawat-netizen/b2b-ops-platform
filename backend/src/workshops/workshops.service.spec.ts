@@ -3,7 +3,6 @@ import { WorkshopStatus } from '@b2b-ops/shared';
 import { WorkshopsService } from './workshops.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 const workshop = {
   id: 'w1',
@@ -34,7 +33,6 @@ function makeService(emailSent: boolean) {
     prisma as unknown as PrismaService,
     notifications as unknown as NotificationsService,
     config as unknown as ConfigService,
-    { syncWorkshop: jest.fn() } as unknown as GoogleCalendarService,
   );
   return { service, prisma, notifications };
 }

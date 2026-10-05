@@ -1,32 +1,136 @@
-import { useEffect, useState } from 'react';
-import { api, GoogleCalendarStatus } from '../../lib/api';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { WorkshopStatus } from '@b2b-ops/shared';
+import { api, StaffCalendar } from '../../lib/api';
+import { currentMonth, isoDayOf, Month, MonthCalendar, monthRange } from '../../components/MonthCalendar';
 
-// The workshop calendar is Google Calendar itself, shown right here: the
-// agents keep it in step with every workshop and school holiday, so there's
-// one calendar for everyone (an account manager sees only their schools').
+type Workshop = StaffCalendar['workshops'][number];
+
+const time = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+
+function chipClass(w: Workshop) {
+  if (w.status === WorkshopStatus.COMPLETED) return 'cal-chip done';
+  if (w.changeRequested) return 'cal-chip warn';
+  if (w.schoolConfirmed) return 'cal-chip ok';
+  return 'cal-chip';
+}
+
+function chipLabel(w: Workshop) {
+  if (w.status === WorkshopStatus.COMPLETED) return 'Completed';
+  if (w.changeRequested) return 'School asked to change the date';
+  if (w.schoolConfirmed) return 'Confirmed by the school';
+  return 'Waiting for the school to confirm';
+}
+
+// Every school's workshops by date, plus the holidays schools marked on
+// their own calendar links. Nobody edits it by hand: it reads the workshops
+// themselves, so every move the rescheduler agent makes shows up here.
 export function CalendarPage() {
-  const [google, setGoogle] = useState<GoogleCalendarStatus | null>(null);
+  const navigate = useNavigate();
+  const [month, setMonth] = useState<Month>(currentMonth);
+  const [data, setData] = useState<StaffCalendar | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  const [schoolFilter, setSchoolFilter] = useState('');
   useEffect(() => {
+    const { from, to } = monthRange(month);
+    setError(null);
+    // Ignore a slower answer for a month the user has already clicked past.
+    let current = true;
     api
-      .getGoogleCalendarStatus()
-      .then(setGoogle)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load the calendar'));
-  }, []);
+      .getStaffCalendar(from, to)
+      .then((d) => current && setData(d))
+      .catch((err) => current && setError(err.message));
+    return () => {
+      current = false;
+    };
+  }, [month]);
+
+  const schools = useMemo(() => {
+    const names = new Map<string, string>();
+    data?.workshops.forEach((w) => names.set(w.schoolId, w.schoolName));
+    data?.holidays.forEach((h) => names.set(h.schoolId, h.schoolName));
+    return [...names].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [data]);
+
+  const workshops = (data?.workshops ?? []).filter((w) => !schoolFilter || w.schoolId === schoolFilter);
+  const holidays = (data?.holidays ?? []).filter((h) => !schoolFilter || h.schoolId === schoolFilter);
+  const now = new Date();
+  const today = isoDayOf(now.toISOString());
 
   return (
     <div className="page">
       <h1>Calendar</h1>
-      <p className="page-intro">Every school's workshops and holidays. The agents keep it up to date when schools confirm or move dates.</p>
+      <p className="page-intro">Every school's workshops and holidays. Schools can see their own calendar, request workshops and mark holidays from their calendar link; it updates here straight away.</p>
+      <div className="cal-toolbar">
+        <select value={schoolFilter} onChange={(e) => setSchoolFilter(e.target.value)} aria-label="Filter by school">
+          <option value="">All schools</option>
+          {schools.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
       {error && <p className="error">{error}</p>}
-      {google && !google.configured && <p className="muted">Google Calendar is not connected yet.</p>}
-      {google?.configured && !google.embedUrl && <p className="muted">Your calendar is being prepared. Please check again in a few minutes.</p>}
-      {google?.embedUrl && (
-        <>
-          <iframe className="gcal-embed" src={google.embedUrl} title="Workshop calendar (Google Calendar)" />
-          <p className="small muted">Calendar empty or asking you to sign in? Sign in to {google.googleAccount ?? 'your Google account'} in this browser.</p>
-        </>
+
+      <div className="cal-legend small">
+        <span className="cal-chip">Waiting for school</span>
+        <span className="cal-chip ok">Confirmed</span>
+        <span className="cal-chip warn">Change requested</span>
+        <span className="cal-chip done">Completed</span>
+        <span className="cal-chip holiday">School holiday</span>
+      </div>
+
+      <MonthCalendar
+        month={month}
+        onMonthChange={setMonth}
+        today={today}
+        renderDay={(iso) => (
+          <>
+            {holidays
+              .filter((h) => h.date === iso)
+              .map((h) => (
+                <span key={h.schoolId} className="cal-chip holiday" title={`${h.schoolName} holiday${h.note ? `: ${h.note}` : ''}`}>
+                  🏖 {h.schoolName}
+                  {h.note ? `: ${h.note}` : ''}
+                </span>
+              ))}
+            {workshops
+              .filter((w) => isoDayOf(w.scheduledAt) === iso)
+              .map((w) => (
+                <button
+                  key={w.id}
+                  className={chipClass(w)}
+                  title={`${w.schoolName}: ${w.topic} at ${time(w.scheduledAt)}. ${chipLabel(w)}`}
+                  onClick={() => navigate(`/schools/${w.schoolId}?tab=Workshops`)}
+                >
+                  {time(w.scheduledAt)} {w.schoolName}: {w.topic}
+                </button>
+              ))}
+          </>
+        )}
+      />
+
+      <h3>This month</h3>
+      {workshops.length === 0 ? (
+        <p className="muted">No workshops this month.</p>
+      ) : (
+        <ul className="cal-agenda">
+          {workshops.map((w) => (
+            <li key={w.id}>
+              <button className="cal-agenda-item" onClick={() => navigate(`/schools/${w.schoolId}?tab=Workshops`)}>
+                <span className="cal-agenda-date">
+                  {new Date(w.scheduledAt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}, {time(w.scheduledAt)}
+                </span>
+                <span>
+                  <strong>{w.schoolName}</strong>: {w.topic}
+                  {w.targetGrades ? ` (grades ${w.targetGrades})` : ''}
+                </span>
+                <span className={chipClass(w)}>{chipLabel(w)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

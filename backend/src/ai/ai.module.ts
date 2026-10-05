@@ -18,6 +18,7 @@ import { DataCompletenessAgentService } from './agents/data-completeness-agent.s
 import { SchoolDetailsReminderAgentService } from './agents/school-details-reminder-agent.service';
 import { WorkshopReschedulerAgentService } from './agents/workshop-rescheduler-agent.service';
 import { WorkshopSchedulerAgentService } from './agents/workshop-scheduler-agent.service';
+import { FestivalHolidaysAgentService } from './agents/festival-holidays-agent.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentSuggestionsService } from './agent-suggestions.service';
 import { AgentSuggestionsController } from './agent-suggestions.controller';
@@ -42,6 +43,7 @@ import { CronController } from './cron.controller';
     SchoolDetailsReminderAgentService,
     WorkshopReschedulerAgentService,
     WorkshopSchedulerAgentService,
+    FestivalHolidaysAgentService,
     AgentRunnerService,
     AgentSuggestionsService,
   ],

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { WorkshopStatus } from '@b2b-ops/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,9 +10,13 @@ import { LIVE_WORKSHOP_STATUSES } from '../workshops/workshops.service';
 import { workshopResponseToken } from '../workshops/workshop-response-token';
 import { formatDateInZone, formatInZone, isoDateInZone, startOfDayInZone } from '../common/time';
 import { schoolCalendarUrl } from './school-calendar-token';
-import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
+import { MIN_LEAD_DAYS } from '../ai/agents/workshop-rescheduler-agent.service';
+import { RequestWorkshopDto } from './dto/workshop-request.dto';
+import { StaffJwtPayload } from '../auth/jwt-payload.interface';
+import { schoolScopeWhere } from '../common/scope';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 
 /** "2026-10-05" → midnight of that day in the business timezone (noon UTC is the same day in India). */
 export function dayFromIso(iso: string): Date {
@@ -20,7 +24,7 @@ export function dayFromIso(iso: string): Date {
 }
 
 // The school's own calendar link: its workshops, and the holidays it marks.
-// (Staff see workshops in Google Calendar, see GoogleCalendarService.)
+// Staff see every school's (see forStaff), on the Calendar page.
 @Injectable()
 export class CalendarService {
   constructor(
@@ -30,7 +34,6 @@ export class CalendarService {
     private activity: ActivityService,
     private automation: SchoolAutomationService,
     private staffNotifications: StaffNotificationsService,
-    private google: GoogleCalendarService,
   ) {}
 
   calendarLink(schoolId: string) {
@@ -66,6 +69,41 @@ export class CalendarService {
     };
   }
 
+  /** The staff Calendar page: every school's workshops (not cancelled) and
+   * holidays between two days (inclusive), for the schools this staff member
+   * can see (an account manager sees only theirs). */
+  async forStaff(staff: StaffJwtPayload, fromIso: string, toIso: string) {
+    const from = dayFromIso(fromIso);
+    const to = new Date(dayFromIso(toIso).getTime() + DAY_MS);
+    const school = schoolScopeWhere(staff);
+    const [workshops, holidays] = await Promise.all([
+      this.prisma.workshop.findMany({
+        where: { school, status: { not: WorkshopStatus.CANCELLED }, scheduledAt: { gte: from, lt: to } },
+        include: { school: { select: { name: true } } },
+        orderBy: { scheduledAt: 'asc' },
+      }),
+      this.prisma.schoolBlockedDate.findMany({
+        where: { school, day: { gte: from, lt: to } },
+        include: { school: { select: { name: true } } },
+        orderBy: { day: 'asc' },
+      }),
+    ]);
+    return {
+      workshops: workshops.map((w) => ({
+        id: w.id,
+        schoolId: w.schoolId,
+        schoolName: w.school.name,
+        topic: w.topic,
+        targetGrades: w.targetGrades,
+        scheduledAt: w.scheduledAt,
+        status: w.status,
+        schoolConfirmed: !!w.schoolConfirmedAt,
+        changeRequested: !!w.changeRequestedAt,
+      })),
+      holidays: holidays.map((h) => ({ schoolId: h.schoolId, schoolName: h.school.name, date: isoDateInZone(h.day), note: h.note })),
+    };
+  }
+
   /** The school marks a day as a holiday / not available. If a workshop is
    * already on that day, the manager is emailed and the bell lights up, and
    * the school is told to move it. */
@@ -76,7 +114,6 @@ export class CalendarService {
       create: { schoolId, day, note },
       update: { note },
     });
-    void this.google.syncHoliday(schoolId, day);
     const [school, clashes] = await Promise.all([
       this.prisma.school.findUniqueOrThrow({ where: { id: schoolId }, select: { name: true } }),
       this.prisma.workshop.findMany({
@@ -117,10 +154,85 @@ export class CalendarService {
     return { clashes: clashes.map((w) => ({ id: w.id, topic: w.topic, scheduledAt: w.scheduledAt })) };
   }
 
+  /** The school asks for a workshop on a day and time it picks. It goes on
+   * the calendar as Scheduled (already confirmed by the school, since it
+   * chose the date); the school gets a "request received" email, and the
+   * Super Admins, the account manager and the sales rep are emailed and
+   * the bell lights up, so staff can confirm a trainer from the Workshops tab. */
+  async requestWorkshop(schoolId: string, dto: RequestWorkshopDto) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        name: true,
+        ownerName: true,
+        ownerEmail: true,
+        assignedAccountManager: { select: { email: true, isActive: true } },
+        assignedSalesRep: { select: { email: true, isActive: true } },
+      },
+    });
+    if (!school) throw new NotFoundException();
+    const day = dayFromIso(dto.date);
+    const earliest = startOfDayInZone(new Date(), MIN_LEAD_DAYS);
+    if (Number.isNaN(day.getTime())) throw new BadRequestException('Please pick a valid date.');
+    if (day < earliest) {
+      throw new BadRequestException(`Please pick a date from ${formatDateInZone(earliest)} onwards, so we have time to prepare.`);
+    }
+    const holiday = await this.prisma.schoolBlockedDate.findUnique({ where: { schoolId_day: { schoolId, day } } });
+    if (holiday) {
+      throw new BadRequestException(`You marked ${formatDateInZone(day)} as a holiday. Remove the holiday first, or pick another day.`);
+    }
+    const [hours, minutes] = dto.time.split(':').map(Number);
+    const scheduledAt = new Date(day.getTime() + (hours * 60 + minutes) * MINUTE_MS);
+    const topic = dto.topic.trim();
+    const grades = dto.targetGrades?.trim() || null;
+    const note = dto.note?.trim() || null;
+
+    const workshop = await this.prisma.workshop.create({
+      data: { schoolId, topic, targetGrades: grades, scheduledAt, schoolConfirmedAt: new Date() },
+    });
+
+    const when = formatInZone(scheduledAt);
+    const summary = `"${topic}" on ${when}${grades ? ` for grades ${grades}` : ''}`;
+    await this.activity.record(schoolId, null, `School requested a workshop ${summary}`, note);
+    await this.staffNotifications.notify(schoolId, 'WORKSHOP_REQUESTED', `${school.name} requested a workshop`, `${summary}${note ? `. Note: ${note}` : ''}`);
+
+    const staffRecipients = new Set(await this.automation.adminAlertRecipients());
+    for (const person of [school.assignedAccountManager, school.assignedSalesRep]) {
+      if (person?.isActive) staffRecipients.add(person.email);
+    }
+    const link = this.calendarLink(schoolId);
+    await Promise.all([
+      ...[...staffRecipients].map((recipient) =>
+        this.notifications.sendTemplateEmail({
+          schoolId,
+          recipient,
+          templateKey: 'workshop_requested_staff',
+          subject: `${school.name} requested a workshop on ${formatDateInZone(day)}`,
+          body:
+            `Hi team,\n\n${school.name} requested a workshop from its calendar page:\n\n` +
+            `Topic: ${topic}\nDate: ${when}${grades ? `\nGrades: ${grades}` : ''}${note ? `\nNote from the school: ${note}` : ''}\n\n` +
+            `It's on the calendar as Scheduled. Please make sure a trainer is free, then press "Confirm" on the school's Workshops tab ` +
+            `so the school gets the confirmation email.`,
+          fromAccountManager: false,
+        }),
+      ),
+      this.notifications.sendTemplateEmail({
+        schoolId,
+        recipient: school.ownerEmail,
+        templateKey: 'workshop_request_received',
+        subject: `We've received your workshop request — ${school.name}`,
+        body:
+          `Dear ${school.ownerName ?? 'Team'},\n\nThank you! We've received your request for the workshop "${topic}" on ${when}` +
+          `${grades ? ` for grades ${grades}` : ''}.\n\nOur team will confirm it shortly. You can see it, and all your workshop dates, on your calendar.\n\nTeam codevidhya`,
+        button: { label: 'Open my calendar', url: link },
+      }),
+    ]);
+    return { id: workshop.id, topic, scheduledAt };
+  }
+
   async removeHoliday(schoolId: string, dateIso: string) {
     const day = dayFromIso(dateIso);
     const { count } = await this.prisma.schoolBlockedDate.deleteMany({ where: { schoolId, day } });
-    void this.google.syncHoliday(schoolId, day);
     if (count > 0) await this.activity.record(schoolId, null, `School removed the holiday on ${formatDateInZone(day)} from its calendar`);
     return { removed: count };
   }

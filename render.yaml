@@ -91,16 +91,3 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: openai/gpt-oss-20b
-      # Google Calendar sync (backend/src/google-calendar). Leaving these
-      # unset is safe — the sync just stays off. The calendar id is on the
-      # calendar's Settings → "Integrate calendar"; the JSON is the whole
-      # contents of the service account's key file (project
-      # codevidhya-workshops-cal, account kumawatk2020@gmail.com).
-      - key: GOOGLE_CALENDAR_ID
-        sync: false
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      # The Google account that owns the calendar; Super Admins' "Open my
-      # Google Calendar" button opens it as this account.
-      - key: GOOGLE_CALENDAR_OWNER_EMAIL
-        value: kumawatk2020@gmail.com

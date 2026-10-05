@@ -123,6 +123,7 @@ model School {
   activities         SchoolActivity[]
   staffNotifications StaffNotification[]
   blockedDates       SchoolBlockedDate[]
+  festivalsApplied   SchoolFestivalApplied[]
   assets             SchoolAsset[]
   students           Student[]
 }
@@ -460,6 +461,19 @@ model SchoolBlockedDate {
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   day       DateTime
   note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, day])
+}
+
+// Festival days the festival holidays agent already put on a school's
+// calendar, so a holiday the school removes (because it's open that day)
+// isn't added back on the next run. `day` is midnight in the business timezone.
+model SchoolFestivalApplied {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  day       DateTime
   createdAt DateTime @default(now())
 
   @@unique([schoolId, day])

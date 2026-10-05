@@ -2236,6 +2236,17 @@ a.button-like {
 a.button-like:hover {
   background: var(--primary-soft);
 }
+.cal-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 .cal {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -2335,6 +2346,7 @@ a.button-like:hover {
 button.cal-chip {
   cursor: pointer;
 }
+.cal-legend .cal-chip,
 .cal-agenda .cal-chip {
   display: inline-block;
   width: auto;
@@ -2363,6 +2375,7 @@ button.cal-chip {
   flex-direction: column;
   gap: 8px;
 }
+.cal-agenda-item,
 .cal-agenda-row {
   display: flex;
   flex-wrap: wrap;
@@ -2376,6 +2389,9 @@ button.cal-chip {
   background: var(--surface);
   color: inherit;
   font-weight: normal;
+}
+.cal-agenda-item:hover {
+  background: var(--surface-sunken);
 }
 .cal-agenda-date {
   font-weight: 600;
@@ -2401,13 +2417,4 @@ button.cal-chip {
 .cal-confirmed {
   margin-left: 8px;
   white-space: nowrap;
-}
-
-/* Google Calendar shown inside the Calendar page */
-.gcal-embed {
-  width: 100%;
-  height: min(720px, 75vh);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #fff;
 }
